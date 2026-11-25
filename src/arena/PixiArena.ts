@@ -15,6 +15,7 @@ export class PixiArena {
   private observer?: ResizeObserver
   private animationFrame = 0
   private destroyed = false
+  private active = false
   private lastTime = 0
   private ship?: Sprite
   private water?: Graphics
@@ -65,9 +66,14 @@ export class PixiArena {
     this.observer = new ResizeObserver(() => this.resize())
     this.observer.observe(this.element)
     this.element.appendChild(app.canvas)
-    this.input.start()
     this.lastTime = performance.now()
     this.animationFrame = requestAnimationFrame(this.tick)
+  }
+
+  setActive(active: boolean): void {
+    this.active = active
+    if (active) this.input.start()
+    else this.input.stop()
   }
 
   destroy(): void {
@@ -89,9 +95,11 @@ export class PixiArena {
     if (!this.controller || !this.ship) return
     const deltaSeconds = Math.min((now - this.lastTime) / 1000, 0.05)
     this.lastTime = now
-    this.controller.update(deltaSeconds)
-    this.debugger?.draw(this.physics)
-    this.publishPosition()
+    if (this.active) {
+      this.controller.update(deltaSeconds)
+      this.debugger?.draw(this.physics)
+      this.publishPosition()
+    }
     this.animationFrame = requestAnimationFrame(this.tick)
   }
 

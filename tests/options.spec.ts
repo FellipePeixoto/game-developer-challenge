@@ -1,89 +1,110 @@
 import { expect, test } from '@playwright/test'
 
-test('navigates the menu and data tabs by keyboard', async ({ page }) => {
+test('opens Captain’s Log on the selected tab and restores menu focus', async ({ page }) => {
   await page.goto('/')
   const play = page.getByRole('button', { name: 'Play', exact: true })
-  await expect(play).toBeVisible()
+  const rankingButton = page.getByRole('button', { name: 'Ranking', exact: true })
+  const historyButton = page.getByRole('button', { name: 'Match History', exact: true })
   await page.keyboard.press('Tab')
   await expect(play).toBeFocused()
   await page.keyboard.press('Tab')
-  await expect(page.getByRole('button', { name: 'Options' })).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('spinbutton', { name: 'Game session time' })).toBeFocused()
-
-  await page.getByRole('button', { name: 'Back' }).press('Enter')
-  await expect(page.getByRole('button', { name: 'Options' })).toBeFocused()
-
+  await expect(page.getByRole('button', { name: 'Options', exact: true })).toBeFocused()
   await page.keyboard.press('Tab')
+  await expect(rankingButton).toBeFocused()
+  await page.keyboard.press('Enter')
+
+  await expect(page.getByRole('heading', { name: "Captain's Log" })).toBeVisible()
   const ranking = page.getByRole('tab', { name: 'Ranking' })
   const history = page.getByRole('tab', { name: 'Match History' })
   await expect(ranking).toBeFocused()
+  await expect(ranking).toHaveAttribute('aria-selected', 'true')
   await page.keyboard.press('ArrowRight')
   await expect(history).toBeFocused()
   await expect(history).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('tabpanel', { name: 'Match History' })).toBeVisible()
-  await page.keyboard.press('ArrowLeft')
-  await expect(ranking).toBeFocused()
-  await expect(page.getByRole('tabpanel', { name: 'Ranking' })).toBeVisible()
-})
-
-test('validates, saves and restores session options', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Options' }).click()
-  const duration = page.getByRole('spinbutton', { name: 'Game session time' })
-  const spawn = page.getByRole('spinbutton', { name: 'Enemy spawn time' })
-  const save = page.getByRole('button', { name: 'Save options' })
-
-  for (const [invalidDuration, invalidSpawn] of [['59', '0'], ['181', '61'], ['60.5', '1.5'], ['', '']]) {
-    await duration.fill(invalidDuration)
-    await spawn.fill(invalidSpawn)
-    await save.click()
-    await expect(duration).toHaveAttribute('aria-invalid', 'true')
-    await expect(spawn).toHaveAttribute('aria-invalid', 'true')
-    await expect(duration).toBeFocused()
-    await expect(page.getByRole('alert')).toContainText('Enter a whole number from 60 to 180')
-    await expect(page.getByRole('alert')).toContainText('Enter a whole number from 1 to 60')
-  }
-
-  for (const [validDuration, validSpawn] of [['60', '1'], ['180', '60']]) {
-    await duration.fill(validDuration)
-    await spawn.fill(validSpawn)
-    await save.click()
-    await expect(page.getByRole('heading', { name: 'Pirate Battle' })).toBeVisible()
-
-    await page.reload()
-    await page.getByRole('button', { name: 'Options' }).click()
-    await expect(duration).toHaveValue(validDuration)
-    await expect(spawn).toHaveValue(validSpawn)
-  }
-
-  await duration.fill('90')
-  await page.getByRole('button', { name: 'Back' }).click()
-  await page.getByRole('button', { name: 'Options' }).click()
-  await expect(duration).toHaveValue('180')
-})
-
-test('keeps the active session settings when the saved options change', async ({ page, context }) => {
-  await page.goto('/')
-  const play = page.getByRole('button', { name: 'Play', exact: true })
-  await play.click()
-  const session = page.getByRole('region', { name: 'Session settings' })
-  await expect(session).toContainText('120 seconds')
-  await expect(session).toContainText('8 seconds')
-
-  const optionsPage = await context.newPage()
-  await optionsPage.goto('/')
-  await optionsPage.getByRole('button', { name: 'Options' }).click()
-  await optionsPage.getByRole('spinbutton', { name: 'Game session time' }).fill('90')
-  await optionsPage.getByRole('spinbutton', { name: 'Enemy spawn time' }).fill('5')
-  await optionsPage.getByRole('button', { name: 'Save options' }).click()
-  await expect(optionsPage.getByRole('heading', { name: 'Pirate Battle' })).toBeVisible()
-  await optionsPage.close()
-
-  await expect(session).toContainText('120 seconds')
-  await expect(session).toContainText('8 seconds')
   await page.getByRole('button', { name: 'Main Menu' }).click()
-  await play.click()
-  await expect(session).toContainText('90 seconds')
-  await expect(session).toContainText('5 seconds')
+  await expect(rankingButton).toBeFocused()
+
+  await historyButton.click()
+  await expect(history).toBeFocused()
+  await expect(history).toHaveAttribute('aria-selected', 'true')
+  await page.keyboard.press('Home')
+  await expect(page.getByRole('tabpanel', { name: 'Ranking' })).toBeVisible()
+  await page.getByRole('button', { name: 'Main Menu' }).click()
+  await expect(historyButton).toBeFocused()
+})
+
+test('adjusts whole seconds within the supported ranges and saves on return', async ({ page }) => {
+  await page.addInitScript(() => {
+    const key = 'pirate-battle:session-options'
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify({ durationSeconds: 60, spawnIntervalSeconds: 60 }))
+    }
+  })
+  await page.goto('/')
+  const options = page.getByRole('button', { name: 'Options', exact: true })
+  await options.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Options', exact: true })).toBeFocused()
+
+  const duration = page.getByRole('status', { name: 'Game session time', exact: true })
+  const spawn = page.getByRole('status', { name: 'Enemy spawn time', exact: true })
+  await expect(duration).toHaveText('60 s')
+  await expect(spawn).toHaveText('60 s')
+  await expect(page.getByRole('button', { name: 'Decrease game session time' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Increase enemy spawn time' })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Increase game session time' }).click()
+  await page.getByRole('button', { name: 'Decrease enemy spawn time' }).click()
+  await expect(duration).toHaveText('61 s')
+  await expect(spawn).toHaveText('59 s')
+  await page.getByRole('button', { name: 'Main Menu' }).click()
+  await expect(options).toBeFocused()
+  await page.reload()
+  await options.click()
+  await expect(duration).toHaveText('61 s')
+  await expect(spawn).toHaveText('59 s')
+})
+
+test('shows the reference records and paginates ranking and match history', async ({ page, isMobile }) => {
+  await page.setViewportSize(isMobile ? { width: 320, height: 700 } : { width: 1800, height: 1000 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ranking', exact: true }).click()
+
+  const ranking = page.getByRole('table', { name: 'Ranking' })
+  const log = page.getByRole('region', { name: "Captain's Log" })
+  const mainMenu = log.getByRole('button', { name: 'Main Menu' })
+  const previous = page.getByRole('button', { name: 'Previous page' })
+  const next = page.getByRole('button', { name: 'Next page' })
+  const pagination = page.getByRole('status', { name: 'Current page' })
+  await expect(ranking.getByRole('row')).toHaveCount(6)
+  await expect(ranking.getByRole('row').nth(1)).toContainText('Captain Flint')
+  await expect(ranking.getByRole('row', { name: /Captain Jack.*You/ })).toContainText('24')
+  await expect(pagination).toHaveText('Page 1 of 3')
+  const rankingHeight = await log.evaluate(panel => panel.getBoundingClientRect().height)
+  const mainMenuTop = await mainMenu.evaluate(button => button.getBoundingClientRect().top)
+  await expect(previous).toBeDisabled()
+  await next.click()
+  await expect(pagination).toHaveText('Page 2 of 3')
+  await expect(ranking.getByRole('cell', { name: '06', exact: true })).toBeVisible()
+  await next.click()
+  await expect(pagination).toHaveText('Page 3 of 3')
+  await expect(next).toBeDisabled()
+
+  await page.getByRole('tab', { name: 'Match History' }).click()
+  const history = page.getByRole('table', { name: 'Match History' })
+  await expect(history.getByRole('row')).toHaveCount(6)
+  await expect(history.getByRole('row').nth(1)).toContainText('19:36')
+  await expect(history.getByRole('row').nth(1)).toContainText('Time up')
+  await expect(history.getByRole('row').nth(2)).toContainText('Defeated')
+  await expect(pagination).toHaveText('Page 1 of 2')
+  expect(await log.evaluate(panel => panel.getBoundingClientRect().height)).toBeCloseTo(rankingHeight, 0)
+  expect(await mainMenu.evaluate(button => button.getBoundingClientRect().top)).toBeCloseTo(mainMenuTop, 0)
+  await next.click()
+  await expect(pagination).toHaveText('Page 2 of 2')
+  await expect(next).toBeDisabled()
+  await previous.click()
+  await expect(history.getByRole('row').nth(1)).toContainText('19:36')
+
+  await page.getByRole('tab', { name: 'Ranking' }).click()
+  await expect(pagination).toHaveText('Page 1 of 3')
 })

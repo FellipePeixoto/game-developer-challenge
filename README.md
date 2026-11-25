@@ -4,7 +4,7 @@ A 2D top-down naval shooter built with React, TypeScript and PixiJS. Navigate be
 
 ## Status
 
-In development. Available now: main menu, Options (with validation and persistence), session setup screen, player movement with keyboard and touch controls, arena bounds and island collision. Combat, enemies, ranking, match history and deployment are still to come.
+The main menu opens the arena, Options, or the selected tab in Captain's Log. The arena supports pausing, keyboard and touch movement, arena bounds, and island collisions. Captain's Log displays sample ranking and match history records with five entries per page. Switching tabs returns to the first page.
 
 ## Stack
 
@@ -46,11 +46,11 @@ Playwright runs in Chromium with desktop and emulated mobile profiles. The HTML 
 
 ## Controls
 
-The main menu has a **Controls** section listing the commands. Movement and rotation work with the keyboard and with on-screen touch controls. Firing controls will be added with combat.
+Press **W** to move forward, **A** to turn left, and **D** to turn right. The same controls are available on screen. Select **Pause** to stop movement, then **Resume** to continue the current session or **Main Menu** to end it.
 
 ## Options
 
-Both options are saved together in the browser's local storage. The values are captured when **Play** is selected, so later changes apply to new matches only. Invalid saved data or unavailable storage falls back to the defaults.
+The **−** and **+** buttons change each option by one second. **Main Menu** saves both values to the browser's local storage. From the pause screen, **Back to Pause** saves the values and returns to the paused session. The values are captured when **Play** is selected, so later changes apply to new matches only. Invalid saved data or unavailable storage falls back to the defaults.
 
 | Option | Accepted values | Default |
 | --- | --- | --- |

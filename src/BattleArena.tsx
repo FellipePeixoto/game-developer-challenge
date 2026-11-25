@@ -4,8 +4,16 @@ import { PixiArena } from './arena/PixiArena'
 
 type LoadState = 'loading' | 'error' | 'ready'
 
-export function BattleArena() {
+interface BattleArenaProps {
+  active: boolean
+  restorePauseFocus?: boolean
+  onPause: () => void
+}
+
+export function BattleArena({ active, restorePauseFocus, onPause }: BattleArenaProps) {
   const host = useRef<HTMLDivElement>(null)
+  const pauseButton = useRef<HTMLButtonElement>(null)
+  const mountedArena = useRef<PixiArena | null>(null)
   const input = useRef<ArenaInput | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [loadState, setLoadState] = useState<LoadState>('loading')
@@ -18,28 +26,48 @@ export function BattleArena() {
     if (!container || !controls) return
 
     const arena = new PixiArena(container, controls)
+    mountedArena.current = arena
     void arena.mount().then(
-      () => setLoadState('ready'),
-      () => setLoadState('error'),
+      () => { if (mountedArena.current === arena) setLoadState('ready') },
+      () => { if (mountedArena.current === arena) setLoadState('error') },
     )
 
-    return () => arena.destroy()
+    return () => {
+      mountedArena.current = null
+      arena.destroy()
+    }
   }, [attempt])
 
+  useEffect(() => {
+    mountedArena.current?.setActive(active && loadState === 'ready')
+  }, [active, loadState])
+
+  useEffect(() => {
+    if (active && restorePauseFocus) pauseButton.current?.focus()
+  }, [active, restorePauseFocus])
+
   return <>
-    {loadState === 'loading' && <p role="status">Loading battle assets…</p>}
-    {loadState === 'error' && <div role="alert">Could not load battle assets. <button type="button" onClick={() => { setLoadState('loading'); setAttempt(value => value + 1) }}>Retry</button></div>}
-    <div className="battle-arena" role="img" aria-label="Battle arena" ref={host} />
-    {loadState === 'ready' && <div className="touch-controls" aria-label="Movement controls">
+    {active && loadState === 'loading' && <p className="arena-message" role="status">Loading battle assets…</p>}
+    {active && loadState === 'error' && <div className="arena-message" role="alert">Could not load battle assets. <button type="button" onClick={() => { setLoadState('loading'); setAttempt(value => value + 1) }}>Retry</button></div>}
+    <div className="battle-arena" role="img" aria-label="Battle arena" aria-hidden={!active} ref={host} />
+    {active && loadState === 'ready' && <div className="touch-controls" role="group" aria-label="Movement controls">
       {ArenaInput.commands.map(command =>
         <button
           key={command.code}
           type="button"
+          className="round-button"
+          data-icon={command.code}
+          aria-label={command.label}
           onPointerDown={event => { event.preventDefault(); input.current?.press(command.code) }}
           onPointerUp={() => input.current?.release(command.code)}
           onPointerCancel={() => input.current?.release(command.code)}
           onPointerLeave={() => input.current?.release(command.code)}
-        >{command.label}</button>)}
+        />)}
     </div>}
+    {active && (
+      <section className="session-hud" aria-label="Battle controls">
+        <button ref={pauseButton} type="button" className="round-button" data-icon="pause" aria-label="Pause" onClick={onPause} />
+      </section>
+    )}
   </>
 }

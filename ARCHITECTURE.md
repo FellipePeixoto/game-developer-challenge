@@ -4,9 +4,15 @@ Setup, commands and verification steps are in [README.md](README.md).
 
 ## Menu and session options
 
-Vite serves and builds the app. React runs in Strict Mode with strict TypeScript. `App` owns the current screen and reads the saved options each time the player opens Options or selects Play. The session setup screen displays the options captured when Play was selected.
+Vite serves and builds the app. React runs in Strict Mode with strict TypeScript. `App` owns screen transitions and captures the saved options when the player selects **Play**. `MainMenu` renders the entry points and restores focus when the player returns. `OptionsScreen` loads the saved options and persists edits. `PauseScreen` renders the pause actions and focuses **Resume**. `BattleArena` owns the Pixi mount, the arena controls, and focus restoration to **Pause** on resume.
+
+The `src/captainLog/` modules separate navigation from presentation. `CaptainLog` owns tab selection, keyboard navigation, and pagination. `RankingTable` and `MatchHistoryTable` render the records for the requested page. `sampleRecords.ts` supplies sample records, and `CaptainLog.css` defines the panel and table styles.
 
 `sessionOptions.ts` defines the defaults and validation rules shared by the form and the browser storage reader. **Game session time** accepts whole seconds from 60 to 180 and defaults to 120. **Enemy spawn time** accepts whole seconds from 1 to 60 and defaults to 8. The app saves both values together in local storage and uses the defaults if the saved data is invalid or storage is unavailable.
+
+## UI assets
+
+Resizable rectangular panels and buttons in the React UI use nine-slice rendering (9-patch) via CSS `border-image`. Each corner scales uniformly. Horizontal and vertical edges resize along their respective lengths, and the center fills the available space. Button variants and pressed states share the same slice geometry. Circular controls and their icons use `background-size: contain` to preserve their proportions.
 
 ## Arena and player collisions
 

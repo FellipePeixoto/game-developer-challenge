@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { useEffect, useRef } from 'react'
+import title from '../assets/png/retina/ui/menu/title_pirate_battle.png'
+import ship from '../assets/png/retina/ships/ship_1.png'
+import type { LogTab } from './captainLog/CaptainLog'
 
-const tabs = ['Ranking', 'Match History'] as const
-export type MenuAction = 'play' | 'options'
+export type MenuAction = 'play' | 'options' | LogTab
 
 interface MainMenuProps {
   onSelect: (action: MenuAction) => void
@@ -10,100 +11,28 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onSelect, restoreFocus }: MainMenuProps) {
-  const [activeTab, setActiveTab] = useState(0)
-  const tabList = useRef<HTMLDivElement>(null)
-  const playButton = useRef<HTMLButtonElement>(null)
-  const optionsButton = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    if (restoreFocus === 'play') playButton.current?.focus()
-    if (restoreFocus === 'options') optionsButton.current?.focus()
+    if (restoreFocus) menu.current?.querySelector<HTMLButtonElement>(`[data-action="${restoreFocus}"]`)?.focus()
   }, [restoreFocus])
 
-  function handleTabKey(event: KeyboardEvent<HTMLDivElement>) {
-    let nextTab: number
-    switch (event.key) {
-      case 'ArrowRight':
-        nextTab = (activeTab + 1) % tabs.length
-        break
-      case 'ArrowLeft':
-        nextTab = (activeTab + tabs.length - 1) % tabs.length
-        break
-      case 'Home':
-        nextTab = 0
-        break
-      case 'End':
-        nextTab = tabs.length - 1
-        break
-      default:
-        return
-    }
-
-    event.preventDefault()
-    setActiveTab(nextTab)
-    tabList.current?.querySelectorAll('button')[nextTab]?.focus()
-  }
-
   return (
-    <main className="main-menu">
-      <header className="hero card">
-        <div className="hero-content">
-          <h1>Pirate Battle</h1>
-          <div className="actions">
-            <button className="primary" type="button" ref={playButton} onClick={() => onSelect('play')}>
-              Play
-            </button>
-            <button type="button" ref={optionsButton} onClick={() => onSelect('options')}>
-              Options
-            </button>
-          </div>
-        </div>
+    <section className="overlay-panel main-menu" aria-labelledby="menu-title" ref={menu}>
+      <header className="menu-heading">
+        <h1 id="menu-title"><img className="game-logo" src={title} alt="Pirate Battle" /></h1>
+        <p className="tagline">Set sail. Take command.</p>
       </header>
-
-      <div className="menu-panels">
-        <section className="card controls" aria-labelledby="controls-heading">
-          <h2 id="controls-heading">Controls</h2>
-          <dl className="control-list">
-            <div><dt>Move forward</dt><dd><kbd>W</kbd></dd></div>
-            <div><dt>Turn left / right</dt><dd><kbd>A</kbd> <kbd>D</kbd></dd></div>
-            <div><dt>Fire forward</dt><dd><kbd>Space</kbd></dd></div>
-            <div><dt>Fire left / right</dt><dd><kbd>Q</kbd> <kbd>E</kbd></dd></div>
-            <div><dt>Pause</dt><dd><kbd>Esc</kbd></dd></div>
-          </dl>
-        </section>
-
-        <section className="card records" aria-label="Match records">
-          <div className="tab-list" ref={tabList} role="tablist" aria-label="Match records" onKeyDown={handleTabKey}>
-            {tabs.map((tab, index) => (
-              <button
-                key={tab}
-                id={`records-tab-${index}`}
-                aria-controls={`records-panel-${index}`}
-                aria-selected={index === activeTab}
-                tabIndex={index === activeTab ? 0 : -1}
-                role="tab"
-                type="button"
-                onClick={() => setActiveTab(index)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          {tabs.map((tab, index) => (
-            <div
-              className="tab-panel"
-              key={tab}
-              id={`records-panel-${index}`}
-              role="tabpanel"
-              aria-labelledby={`records-tab-${index}`}
-              hidden={index !== activeTab}
-              tabIndex={0}
-            >
-              <p>{tab} is currently unavailable.</p>
-            </div>
-          ))}
-        </section>
+      <div className="menu-actions">
+        <button className="art-button" type="button" data-action="play" onClick={() => onSelect('play')}>Play</button>
+        <button className="art-button" type="button" data-action="options" onClick={() => onSelect('options')}>Options</button>
       </div>
-    </main>
+      <img className="menu-ship" src={ship} alt="" />
+      <p className="menu-hint">Navigate the islands. Survive the battle.</p>
+      <div className="menu-links">
+        <button className="art-button art-button-small" type="button" data-action="ranking" onClick={() => onSelect('ranking')}>Ranking</button>
+        <button className="art-button art-button-small" type="button" data-action="history" onClick={() => onSelect('history')}>Match History</button>
+      </div>
+    </section>
   )
 }

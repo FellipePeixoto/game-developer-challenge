@@ -1,54 +1,61 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { MainMenu } from './MainMenu'
+import jungleLogo from '../assets/logo_jungle_gaming.svg'
 import { BattleArena } from './BattleArena'
+import { CaptainLog } from './captainLog/CaptainLog'
 import type { MenuAction } from './MainMenu'
 import { OptionsScreen } from './OptionsScreen'
+import { PauseScreen } from './PauseScreen'
 import { loadSessionOptions } from './sessionOptions'
 import type { SessionOptions } from './sessionOptions'
 
 type Screen =
   | { name: 'menu'; restoreFocus?: MenuAction }
-  | { name: MenuAction; settings: SessionOptions }
+  | { name: 'options' | 'ranking' | 'history' }
+  | { name: 'play'; settings: SessionOptions; restorePauseFocus?: boolean }
+  | { name: 'pause' | 'pause-options'; settings: SessionOptions }
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'menu' })
-  const sessionHeading = useRef<HTMLHeadingElement>(null)
-
-  useEffect(() => {
-    if (screen.name === 'play') sessionHeading.current?.focus()
-  }, [screen.name])
+  const inBattle = screen.name === 'play' || screen.name === 'pause' || screen.name === 'pause-options'
 
   function openScreen(name: MenuAction) {
-    setScreen({ name, settings: loadSessionOptions() })
-  }
-
-  if (screen.name === 'menu') {
-    return <MainMenu onSelect={openScreen} restoreFocus={screen.restoreFocus} />
-  }
-
-  if (screen.name === 'options') {
-    return (
-      <OptionsScreen
-        settings={screen.settings}
-        onClose={() => setScreen({ name: 'menu', restoreFocus: 'options' })}
-      />
-    )
+    if (name === 'play') setScreen({ name, settings: loadSessionOptions() })
+    else setScreen({ name })
   }
 
   return (
-    <main className="session-screen">
-      <h1 ref={sessionHeading} tabIndex={-1}>Session setup</h1>
-      <BattleArena />
-      <section aria-labelledby="session-settings">
-        <h2 id="session-settings">Session settings</h2>
-        <dl className="session-settings">
-          <div><dt>Game session time</dt><dd>{screen.settings.durationSeconds} seconds</dd></div>
-          <div><dt>Enemy spawn time</dt><dd>{screen.settings.spawnIntervalSeconds} seconds</dd></div>
-        </dl>
-      </section>
-      <button type="button" onClick={() => setScreen({ name: 'menu', restoreFocus: 'play' })}>
-        Main Menu
-      </button>
+    <main className="game-shell">
+      {inBattle && (
+        <BattleArena
+          active={screen.name === 'play'}
+          restorePauseFocus={screen.name === 'play' && screen.restorePauseFocus}
+          onPause={() => setScreen({ name: 'pause', settings: screen.settings })}
+        />
+      )}
+      {screen.name !== 'play' && (
+        <>
+          <div className="screen-overlay" aria-hidden="true" />
+          <img className="studio-logo" src={jungleLogo} alt="Jungle Gaming" />
+        </>
+      )}
+      {screen.name === 'menu' && (
+        <MainMenu onSelect={openScreen} restoreFocus={screen.restoreFocus} />
+      )}
+      {screen.name === 'options' && <OptionsScreen onClose={() => setScreen({ name: 'menu', restoreFocus: 'options' })} />}
+      {(screen.name === 'ranking' || screen.name === 'history') && (
+        <CaptainLog initialTab={screen.name} onClose={() => setScreen({ name: 'menu', restoreFocus: screen.name })} />
+      )}
+      {screen.name === 'pause' && (
+        <PauseScreen
+          onResume={() => setScreen({ name: 'play', settings: screen.settings, restorePauseFocus: true })}
+          onOptions={() => setScreen({ name: 'pause-options', settings: screen.settings })}
+          onMainMenu={() => setScreen({ name: 'menu', restoreFocus: 'play' })}
+        />
+      )}
+      {screen.name === 'pause-options' && (
+        <OptionsScreen closeLabel="Back to Pause" onClose={() => setScreen({ name: 'pause', settings: screen.settings })} />
+      )}
     </main>
   )
 }
