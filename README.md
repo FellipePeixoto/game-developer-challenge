@@ -4,7 +4,7 @@ A 2D top-down naval shooter built with React, TypeScript and PixiJS. Navigate be
 
 ## Status
 
-In development. Available now: main menu, Options (with validation and persistence), session setup screen and player movement with keyboard and touch controls. Arena bounds, island collision, combat, enemies, ranking, match history and deployment are still to come.
+In development. Available now: main menu, Options (with validation and persistence), session setup screen, player movement with keyboard and touch controls, arena bounds and island collision. Combat, enemies, ranking, match history and deployment are still to come.
 
 ## Stack
 
@@ -57,9 +57,31 @@ Both options are saved together in the browser's local storage. The values are c
 | Game session time | Whole seconds, 60 to 180 | 120 |
 | Enemy spawn time | Whole seconds, 1 to 60 | 8 |
 
+## Arena collisions and development debugger
+
+The ship's rectangular collider follows its rotation and stays within the arena. On contact, it slides along walls and circular obstacles wherever movement remains possible; a direct approach stops at the blocked surface. Obstacles stay fixed. Turning at contact can shift the ship to keep the rectangle clear; an incompatible rotation is blocked. Resizing the arena returns the ship to the center. Contact resolution lives in `src/arena/Physics.ts`.
+
+Gameplay values currently live in `src/arena/ShipController.ts` (forward speed: 180 scaled pixels/second; rotation: 2 radians/second) and `src/arena/PixiArena.ts` (island center: 75% of arena width and 50% of height; radius: 48 scaled pixels). Edit `SHIP_COLLIDER_WIDTH_FACTOR` and `SHIP_COLLIDER_HEIGHT_FACTOR` in `PixiArena.ts` to tune the ship rectangle independently. Both start at `0.7`, making each collider dimension 70% of the corresponding scaled texture dimension; `1` uses the full dimension. The development debugger shows the resulting rotated rectangle.
+
+With `npm run dev`, collider outlines appear automatically: cyan for the ship, magenta for the island and yellow for the arena. They follow movement and resizing. `npm run build` excludes the debugger; `npm run preview` serves the game without outlines.
+
+Run the collision checks in development with `npx playwright test tests/collision.spec.ts --project=desktop-chromium --reporter=line`. To check the production build in PowerShell:
+
+```powershell
+npm run build
+$env:PLAYWRIGHT_PRODUCTION = '1'
+try {
+  npx playwright test tests/collision.spec.ts --project=desktop-chromium --reporter=line
+} finally {
+  Remove-Item Env:PLAYWRIGHT_PRODUCTION
+}
+```
+
+The production flag makes Playwright start Vite preview and check that the debugger is absent. Omit `--project=desktop-chromium` to include the mobile profile.
+
 ## Not documented yet
 
-These sections will be added in the delivery that introduces them: gameplay configuration reference, network scenario selection and reset, steps to reproduce network failures, and deployment URL.
+These sections will be added in the delivery that introduces them: further gameplay configuration, network scenario selection and reset, steps to reproduce network failures, and deployment URL.
 
 ## More
 

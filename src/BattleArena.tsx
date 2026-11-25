@@ -10,7 +10,7 @@ export function BattleArena() {
   const [attempt, setAttempt] = useState(0)
   const [loadState, setLoadState] = useState<LoadState>('loading')
 
-  if (!input.current) input.current = new ArenaInput()
+  if (input.current === null) input.current = new ArenaInput()
 
   useEffect(() => {
     const container = host.current
@@ -31,7 +31,7 @@ export function BattleArena() {
     {loadState === 'error' && <div role="alert">Could not load battle assets. <button type="button" onClick={() => { setLoadState('loading'); setAttempt(value => value + 1) }}>Retry</button></div>}
     <div className="battle-arena" role="img" aria-label="Battle arena" ref={host} />
     {loadState === 'ready' && <div className="touch-controls" aria-label="Movement controls">
-      {ArenaInput.commands.map((command, index) =>
+      {ArenaInput.commands.map(command =>
         <button
           key={command.code}
           type="button"
