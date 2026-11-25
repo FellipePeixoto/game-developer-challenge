@@ -1,26 +1,6 @@
 # Pirate Battle architecture
 
-## Local development
-
-Use Node.js 22.13 or later in the Node.js 22 release line, or Node.js 24 and later. From the repository root, install dependencies and start the app.
-
-```sh
-npm ci
-npm run dev
-```
-
-Open the local URL printed by Vite. To serve a production build locally, run `npm run build` followed by `npm run preview`.
-
-## Verification
-
-```sh
-npm run lint
-npm run typecheck
-npx playwright install chromium
-npm run test:e2e
-```
-
-Playwright runs the suite in Chromium with desktop and emulated mobile profiles. The HTML report is in `playwright-report/`. Failed tests retain traces in `test-results/`.
+Setup, commands and verification steps are in [README.md](README.md).
 
 ## Menu and session options
 
