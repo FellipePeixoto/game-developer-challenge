@@ -13,8 +13,9 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body, #root { width: 100%; min-width: 320px; height: 100%; margin: 0; }
+html, body, #root { width: 100%; height: 100%; margin: 0; }
 body { overflow: hidden; }
+#root { display: grid; place-items: center; }
 h1, p { margin: 0; }
 button { color: inherit; font: inherit; cursor: pointer; }
 button:disabled { cursor: default; opacity: .55; }
@@ -24,9 +25,11 @@ button:disabled { cursor: default; opacity: .55; }
   position: relative;
   isolation: isolate;
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
-  width: 100%;
-  height: 100%;
+  width: min(100%, calc(100dvh * 16 / 9), 1920px);
+  aspect-ratio: 16 / 9;
+  container-type: size;
   overflow: hidden;
   background: #147089 url('../assets/ui_scene_background.png') center / cover no-repeat;
 }
@@ -44,7 +47,7 @@ button:disabled { cursor: default; opacity: .55; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   width: clamp(20rem, 43vw, 49rem);
   max-width: calc(100% - 1rem);
   max-height: calc(100% - 1rem);
@@ -57,15 +60,15 @@ button:disabled { cursor: default; opacity: .55; }
 }
 
 .overlay-panel:is(.main-menu, .captain-log) {
-  --screen-margin: clamp(.75rem, 3dvh, 1.5rem);
-  max-height: calc(100dvh - 2 * var(--screen-margin));
+  --screen-margin: clamp(.5rem, 3cqh, 1.5rem);
+  max-height: calc(100% - 2 * var(--screen-margin));
   margin-block: var(--screen-margin);
   padding-block: calc(var(--panel-slice-width) * .65 + clamp(1.5rem, 3dvh, 2rem));
 }
 
 :is(.main-menu, .captain-log) > * { flex-shrink: 0; }
 
-.main-menu { min-height: min(72vh, 45rem); gap: clamp(.4rem, 1.7vh, 1.2rem); justify-content: safe center; }
+.main-menu { min-height: min(72cqh, 45rem); gap: clamp(.4rem, 1.7vh, 1.2rem); }
 .menu-heading { display: grid; justify-items: center; gap: clamp(.25rem, 1vh, .8rem); }
 .game-logo { display: block; width: min(100%, clamp(15rem, 28vw, 31rem), 58vh); margin-inline: auto; }
 .tagline { color: #f1d6a0; font-size: clamp(.62rem, 1.5vh, .82rem); font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
@@ -109,7 +112,7 @@ button:disabled { cursor: default; opacity: .55; }
   color: #fff0c8;
 }
 
-.inner-screen { min-height: min(66vh, 42rem); gap: clamp(.6rem, 2vh, 1.35rem); }
+.inner-screen { min-height: min(66cqh, 42rem); gap: clamp(.6rem, 2vh, 1.35rem); }
 .inner-screen h1 { color: #fff0c8; font-size: clamp(1.55rem, 3vw, 2.5rem); line-height: 1.2; text-shadow: 0 3px #101e2a; text-transform: uppercase; }
 .options-form { display: grid; gap: clamp(.65rem, 2.5vh, 1.45rem); width: min(100%, clamp(13rem, 19vw, 21rem)); }
 .option-field { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: clamp(.45rem, 1.75vh, 1.15rem) .5rem; }
@@ -136,24 +139,24 @@ button:disabled { cursor: default; opacity: .55; }
 [data-icon='KeyW'] { --button-icon: url('../assets/png/retina/ui/controls/icon_forward.png'); }
 [data-icon='KeyD'] { --button-icon: url('../assets/png/retina/ui/controls/icon_turn_right.png'); }
 
-.session-hud { position: absolute; z-index: 1; top: clamp(.5rem, 3vh, 2rem); right: clamp(.5rem, 2vw, 2rem); --button-size: clamp(2.6rem, 6vh, 4rem); }
+.session-hud { position: absolute; z-index: 1; top: clamp(.5rem, 3cqh, 2rem); right: clamp(.5rem, 2vw, 2rem); --button-size: clamp(2.6rem, 6cqh, 4rem); }
 .touch-controls {
   position: absolute;
   z-index: 1;
-  bottom: clamp(.75rem, 5vh, 3.5rem);
+  bottom: clamp(.75rem, 5cqh, 3.5rem);
   left: clamp(.75rem, 2vw, 2rem);
   display: flex;
   align-items: flex-end;
   gap: clamp(.3rem, .8vw, .8rem);
   touch-action: none;
-  --button-size: clamp(2.8rem, 7vh, 4.5rem);
+  --button-size: clamp(2.8rem, 7cqh, 4.5rem);
 }
 
 .touch-controls button { user-select: none; -webkit-touch-callout: none; touch-action: none; }
 .touch-controls [data-icon='KeyW'] { margin-bottom: calc(var(--button-size) / 1.6); }
 
-@media (max-height: 460px) {
+@container (max-height: 460px) {
   .overlay-panel { padding-block: .7rem; }
-  .game-logo { width: min(100%, 47vh); }
+  .game-logo { width: min(100%, 47cqh); }
   .menu-ship { display: none; }
 }

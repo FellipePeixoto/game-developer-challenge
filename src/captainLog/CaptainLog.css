@@ -1,7 +1,7 @@
 .captain-log {
   justify-content: flex-start;
   width: min(96vw, clamp(42rem, 78vw, 88rem));
-  min-height: min(74vh, 46.25rem);
+  min-height: min(74cqh, 46.25rem);
   gap: clamp(.55rem, 1.55vh, 1rem);
   padding: clamp(1.5rem, 4vh, 2.5rem) clamp(1.1rem, 4vw, 4.5rem);
 }

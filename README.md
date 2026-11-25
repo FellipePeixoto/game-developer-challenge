@@ -44,6 +44,10 @@ Open the local URL printed by Vite.
 
 Playwright runs in Chromium with desktop and emulated mobile profiles. The HTML report is written to `playwright-report/` and traces of failed tests to `test-results/`.
 
+## Display
+
+The game frame stays centered at a 16:9 aspect ratio and scales to fit the browser viewport up to 1920 × 1080 CSS pixels. The PixiJS canvas fills the arena inside the frame.
+
 ## Controls
 
 Press **W** to move forward, **A** to turn left, and **D** to turn right. The same controls are available on screen. Select **Pause** to stop movement, then **Resume** to continue the current session or **Main Menu** to end it.
