@@ -36,7 +36,7 @@ export function App() {
   }
 
   return (
-    <main className="card inner-screen">
+    <main className="session-screen">
       <h1 ref={sessionHeading} tabIndex={-1}>Session setup</h1>
       <BattleArena />
       <section aria-labelledby="session-settings">
