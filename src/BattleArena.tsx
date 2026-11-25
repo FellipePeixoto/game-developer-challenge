@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArenaInput } from './arena/ArenaInput'
+import { ArenaInput, type ArenaCommand } from './arena/ArenaInput'
 import { PixiArena } from './arena/PixiArena'
 
 type LoadState = 'loading' | 'error' | 'ready'
@@ -46,24 +46,34 @@ export function BattleArena({ active, restorePauseFocus, onPause }: BattleArenaP
     if (active && restorePauseFocus) pauseButton.current?.focus()
   }, [active, restorePauseFocus])
 
+  function renderControl({ code, label, key }: { code: ArenaCommand; label: string; key: string }) {
+    return <button
+      key={code}
+      type="button"
+      className="round-button"
+      data-icon={code}
+      data-key={key}
+      aria-label={label}
+      aria-keyshortcuts={key}
+      onPointerDown={event => { event.preventDefault(); input.current?.press(code) }}
+      onPointerUp={() => input.current?.release(code)}
+      onPointerCancel={() => input.current?.release(code)}
+      onPointerLeave={() => input.current?.release(code)}
+    />
+  }
+
   return <>
     {active && loadState === 'loading' && <p className="arena-message" role="status">Loading battle assets…</p>}
     {active && loadState === 'error' && <div className="arena-message" role="alert">Could not load battle assets. <button type="button" onClick={() => { setLoadState('loading'); setAttempt(value => value + 1) }}>Retry</button></div>}
     <div className="battle-arena" role="img" aria-label="Battle arena" aria-hidden={!active} ref={host} />
-    {active && loadState === 'ready' && <div className="touch-controls" role="group" aria-label="Movement controls">
-      {ArenaInput.commands.map(command =>
-        <button
-          key={command.code}
-          type="button"
-          className="round-button"
-          data-icon={command.code}
-          aria-label={command.label}
-          onPointerDown={event => { event.preventDefault(); input.current?.press(command.code) }}
-          onPointerUp={() => input.current?.release(command.code)}
-          onPointerCancel={() => input.current?.release(command.code)}
-          onPointerLeave={() => input.current?.release(command.code)}
-        />)}
-    </div>}
+    {active && loadState === 'ready' && <>
+      <div className="touch-controls" role="group" aria-label="Movement controls">
+        {ArenaInput.movementCommands.map(renderControl)}
+      </div>
+      <div className="touch-controls touch-controls-fire" role="group" aria-label="Weapon controls">
+        {ArenaInput.fireCommands.map(renderControl)}
+      </div>
+    </>}
     {active && (
       <section className="session-hud" aria-label="Battle controls">
         <button ref={pauseButton} type="button" className="round-button" data-icon="pause" aria-label="Pause" onClick={onPause} />

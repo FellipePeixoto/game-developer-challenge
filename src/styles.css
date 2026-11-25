@@ -154,6 +154,9 @@ button:disabled { cursor: default; opacity: .55; }
 [data-icon='KeyA'] { --button-icon: url('../assets/png/retina/ui/controls/icon_turn_left.png'); }
 [data-icon='KeyW'] { --button-icon: url('../assets/png/retina/ui/controls/icon_forward.png'); }
 [data-icon='KeyD'] { --button-icon: url('../assets/png/retina/ui/controls/icon_turn_right.png'); }
+[data-icon='KeyQ'] { --button-icon: url('../assets/png/retina/ui/controls/icon_fire_left.png'); }
+[data-icon='Space'] { --button-icon: url('../assets/png/retina/ui/controls/icon_fire_front.png'); }
+[data-icon='KeyE'] { --button-icon: url('../assets/png/retina/ui/controls/icon_fire_right.png'); }
 
 .session-hud { position: absolute; z-index: 1; top: 3cqh; right: 2cqw; --button-size: 6cqh; }
 .touch-controls {
@@ -169,5 +172,18 @@ button:disabled { cursor: default; opacity: .55; }
 }
 
 .touch-controls button { user-select: none; -webkit-touch-callout: none; touch-action: none; }
-.touch-controls [data-icon='KeyW'] { margin-bottom: calc(var(--button-size) / 1.6); }
+.touch-controls-fire { right: 2cqw; left: auto; }
+.touch-controls :is([data-icon='KeyW'], [data-icon='Space']) { margin-bottom: calc(var(--button-size) / 1.6); }
+
+@media (pointer: fine) {
+  .touch-controls button { position: relative; }
+  .touch-controls button::before {
+    position: absolute;
+    top: 100%;
+    color: #fff;
+    content: attr(data-key);
+    font-size: 2cqh;
+    font-weight: 700;
+  }
+}
 

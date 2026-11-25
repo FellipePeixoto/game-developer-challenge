@@ -45,6 +45,23 @@ export class Physics {
     return true
   }
 
+  blocksProjectile(start: { x: number; y: number }, end: { x: number; y: number }, radius: number): boolean {
+    if (!this.bounds.contains(end.x, end.y)) return true
+
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const lengthSquared = dx * dx + dy * dy
+    return this.obstacles.some(obstacle => {
+      const projection = lengthSquared > 0
+        ? ((obstacle.x - start.x) * dx + (obstacle.y - start.y) * dy) / lengthSquared
+        : 0
+      const fraction = Math.max(0, Math.min(1, projection))
+      const x = start.x + dx * fraction - obstacle.x
+      const y = start.y + dy * fraction - obstacle.y
+      return x * x + y * y <= (obstacle.radius + radius) ** 2
+    })
+  }
+
   shipCorners(): number[] {
     const { ship, shipRotation } = this
     const centerX = ship.x + ship.width / 2

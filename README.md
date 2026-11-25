@@ -54,7 +54,17 @@ Menus, text, and controls scale with the 16:9 frame. In Captain's Log, Ranking a
 
 ## Controls
 
-Press **W** to move forward, **A** to turn left, and **D** to turn right. The same controls are available on screen. Select **Pause** to stop movement, then **Resume** to continue the current session or **Main Menu** to end it.
+Press **W** to move forward, **A** to turn left, and **D** to turn right. Press **Space** to fire one shot from the bow, **Q** to fire three shots to port, or **E** to fire three shots to starboard. Hold a fire control to repeat as the weapon reloads. Movement and fire controls can be used together on the keyboard or on screen.
+
+Select **Pause** to suspend movement, projectiles, and reload timers. Select **Resume** to continue the current session or **Main Menu** to end it.
+
+## Gameplay configuration
+
+Adjust player movement and turning speeds, weapon cooldowns, and projectile settings in [gameplayConfig.ts](src/arena/gameplayConfig.ts). Movement speed is expressed in pixels per second at the reference arena size. Turning speed is expressed in radians per second.
+
+The default reload time is 0.35 seconds for the bow and 0.6 seconds for each side. Projectiles last up to 1 second and disappear on island contact or when they leave the arena.
+
+Movement and collision tests calculate control durations from the configured ship speeds. The combat tests use the Vite development server and load a fixed combat configuration so that island contact, arena exit, and expiry can each be tested with real controls.
 
 ## Options
 
@@ -69,7 +79,7 @@ The **−** and **+** buttons change each option by one second. **Main Menu** sa
 
 The ship's rectangular collider follows its rotation and stays within the arena. On contact, it slides along walls and circular obstacles wherever movement remains possible; a direct approach stops at the blocked surface. Obstacles stay fixed. Turning at contact can shift the ship to keep the rectangle clear; an incompatible rotation is blocked. Resizing the arena returns the ship to the center. Contact resolution lives in `src/arena/Physics.ts`.
 
-Gameplay values currently live in `src/arena/ShipController.ts` (forward speed: 180 scaled pixels/second; rotation: 2 radians/second) and `src/arena/PixiArena.ts` (island center: 75% of arena width and 50% of height; radius: 48 scaled pixels). Edit `SHIP_COLLIDER_WIDTH_FACTOR` and `SHIP_COLLIDER_HEIGHT_FACTOR` in `PixiArena.ts` to tune the ship rectangle independently. Both start at `0.7`, making each collider dimension 70% of the corresponding scaled texture dimension; `1` uses the full dimension. The development debugger shows the resulting rotated rectangle.
+The island is centered at 75% of arena width and 50% of height and has a radius of 48 scaled pixels. Edit `SHIP_COLLIDER_WIDTH_FACTOR` and `SHIP_COLLIDER_HEIGHT_FACTOR` in `PixiArena.ts` to tune the ship rectangle independently. Both start at `0.7`, making each collider dimension 70% of the corresponding scaled texture dimension. A value of `1` uses the full dimension. The development debugger shows the resulting rotated rectangle.
 
 With `npm run dev`, collider outlines appear automatically: cyan for the ship, magenta for the island and yellow for the arena. They follow movement and resizing. `npm run build` excludes the debugger; `npm run preview` serves the game without outlines.
 

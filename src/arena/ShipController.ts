@@ -1,6 +1,7 @@
 import { Sprite } from 'pixi.js'
 import type { ArenaInput } from './ArenaInput'
 import type { Physics } from './Physics'
+import { gameplayConfig } from './gameplayConfig'
 
 export class ShipController {
   private angle = 0
@@ -16,10 +17,11 @@ export class ShipController {
 
   update(deltaSeconds: number): void {
     const scale = this.ship.scale.x
+    const { movementSpeed, turningSpeed } = gameplayConfig.player
     let angle = this.angle
-    if (this.input.isPressed('KeyA')) angle -= 2 * deltaSeconds
-    if (this.input.isPressed('KeyD')) angle += 2 * deltaSeconds
-    const distance = this.input.isPressed('KeyW') ? 180 * scale * deltaSeconds : 0
+    if (this.input.isPressed('KeyA')) angle -= turningSpeed * deltaSeconds
+    if (this.input.isPressed('KeyD')) angle += turningSpeed * deltaSeconds
+    const distance = this.input.isPressed('KeyW') ? movementSpeed * scale * deltaSeconds : 0
     if (this.physics.move(this.physics.ship, Math.sin(angle) * distance, -Math.cos(angle) * distance, angle)) {
       this.angle = angle
     }

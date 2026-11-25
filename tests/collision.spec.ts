@@ -1,10 +1,19 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { gameplayConfig } from '../src/arena/gameplayConfig'
 
 async function hold(page: Page, key: string, milliseconds: number) {
   if (!milliseconds) return
   await page.keyboard.down(key)
   await page.clock.runFor(milliseconds)
   await page.keyboard.up(key)
+}
+
+function move(page: Page, referencePixels: number) {
+  return hold(page, 'KeyW', Math.round(referencePixels / gameplayConfig.player.movementSpeed * 1000))
+}
+
+function turn(page: Page, key: 'KeyA' | 'KeyD', radians: number) {
+  return hold(page, key, Math.round(radians / gameplayConfig.player.turningSpeed * 1000))
 }
 
 async function value(arena: Locator, name: string) {
@@ -35,20 +44,21 @@ async function islandClearance(arena: Locator, x: number, y: number, radius: num
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.clock.install()
+  const startTime = new Date('2026-01-01T00:00:00Z')
+  await page.clock.install({ time: startTime })
   await page.goto('/')
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect(page.getByRole('img', { name: 'Battle arena' }).locator('canvas')).toHaveCount(1)
   // Freeze between inputs too: parallel workers must not add real-time rotation.
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
+  await page.clock.pauseAt(startTime.getTime() + 60_000)
 })
 
-for (const [edge, turn] of [['top', 0], ['right', 784], ['bottom', 1568], ['left', 2352]] as const) {
+for (const [edge, heading] of [['top', 0], ['right', Math.PI / 2], ['bottom', Math.PI], ['left', 3 * Math.PI / 2]] as const) {
   test(`keeps the rotated ship collider inside the ${edge} edge`, async ({ page }) => {
     const arena = page.getByRole('img', { name: 'Battle arena' })
-    await hold(page, 'KeyW', 700)
-    await hold(page, 'KeyD', turn)
-    await hold(page, 'KeyW', 8000)
+    await move(page, 126)
+    await turn(page, 'KeyD', heading)
+    await move(page, 720)
     const x = await value(arena, 'ship-x')
     const y = await value(arena, 'ship-y')
     const { width, height } = await arena.evaluate(element => ({
@@ -68,7 +78,7 @@ for (const [edge, turn] of [['top', 0], ['right', 784], ['bottom', 1568], ['left
     expect(Math.max(...ys)).toBeLessThanOrEqual(height + 0.01)
     const clearance = { top: Math.min(...ys), right: width - Math.max(...xs), bottom: height - Math.max(...ys), left: Math.min(...xs) }
     expect(clearance[edge]).toBeLessThan(4)
-    await hold(page, 'KeyW', 1000)
+    await move(page, 180)
     expect(Math.abs(await value(arena, 'ship-x') - x)).toBeLessThan(4)
     expect(Math.abs(await value(arena, 'ship-y') - y)).toBeLessThan(4)
   })
@@ -76,8 +86,8 @@ for (const [edge, turn] of [['top', 0], ['right', 784], ['bottom', 1568], ['left
 
 test('slides along the island without penetration or moving the obstacle', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
-  await hold(page, 'KeyD', 672)
-  await hold(page, 'KeyW', 900)
+  await turn(page, 'KeyD', 1.344)
+  await move(page, 162)
   const x = await value(arena, 'ship-x')
   const y = await value(arena, 'ship-y')
   const islandX = await value(arena, 'island-x')
@@ -87,14 +97,14 @@ test('slides along the island without penetration or moving the obstacle', async
   expect(await islandClearance(arena, islandX, islandY, islandRadius)).toBeGreaterThanOrEqual(-0.01)
   expect(await islandClearance(arena, islandX, islandY, islandRadius)).toBeLessThan(4)
   for (let step = 0; step < 5; step++) {
-    await hold(page, 'KeyW', 100)
+    await move(page, 18)
     expect(await islandClearance(arena, islandX, islandY, islandRadius)).toBeGreaterThanOrEqual(-0.01)
   }
   expect(await value(arena, 'ship-x')).toBeGreaterThan(x + 1)
   expect(await value(arena, 'island-x')).toBe(islandX)
   expect(await value(arena, 'island-y')).toBe(islandY)
-  await hold(page, 'KeyA', 672)
-  await hold(page, 'KeyW', 500)
+  await turn(page, 'KeyA', 1.344)
+  await move(page, 90)
   expect(await value(arena, 'ship-y')).toBeLessThan(y - 10)
 })
 
@@ -107,7 +117,7 @@ test('shows collider outlines only in development and updates them with movement
   }
   await expect(arena).toHaveAttribute('data-collision-debugger', 'enabled')
   const initial = await arena.getAttribute('data-debug-colliders')
-  await hold(page, 'KeyW', 400)
+  await move(page, 72)
   expect(await arena.getAttribute('data-debug-colliders')).not.toBe(initial)
   const moved = await arena.getAttribute('data-debug-colliders')
   await page.setViewportSize({ width: 700, height: 700 })

@@ -1,8 +1,10 @@
 import { Application, Assets, Graphics, Sprite, type Texture } from 'pixi.js'
 import shipUrl from '../../assets/png/retina/ships/ship_1.png'
-import type { ArenaInput } from './ArenaInput'
+import { ArenaInput } from './ArenaInput'
 import { ShipController } from './ShipController'
 import { Physics } from './Physics'
+import { PlayerWeapons } from './PlayerWeapons'
+import { gameplayConfig } from './gameplayConfig'
 import type { CollisionDebugger } from './CollisionDebugger'
 
 const WATER_COLOR = '#147089'
@@ -21,7 +23,9 @@ export class PixiArena {
   private water?: Graphics
   private controller?: ShipController
   private island?: Graphics
+  private projectileGraphics?: Graphics
   private readonly physics = new Physics()
+  private readonly weapons = new PlayerWeapons()
   private debugger?: CollisionDebugger
 
   constructor(
@@ -55,6 +59,8 @@ export class PixiArena {
     this.ship.anchor.set(0.5)
     app.stage.addChild(this.ship)
     this.controller = new ShipController(this.ship, this.input, this.physics)
+    this.projectileGraphics = new Graphics()
+    app.stage.addChild(this.projectileGraphics)
 
     if (import.meta.env.DEV) {
       const { CollisionDebugger } = await import('./CollisionDebugger')
@@ -89,6 +95,8 @@ export class PixiArena {
     this.water = undefined
     this.island = undefined
     this.controller = undefined
+    this.projectileGraphics = undefined
+    delete this.element.dataset.projectiles
   }
 
   private readonly tick = (now: number): void => {
@@ -97,6 +105,16 @@ export class PixiArena {
     this.lastTime = now
     if (this.active) {
       this.controller.update(deltaSeconds)
+      const scale = this.ship.scale.x
+      const radius = gameplayConfig.projectile.radius * scale
+      this.weapons.advance(deltaSeconds, scale, (start, end) => this.physics.blocksProjectile(start, end, radius))
+      const { ship, shipRotation } = this.physics
+      for (const { code } of ArenaInput.fireCommands) {
+        if (this.input.isFiring(code)) {
+          this.weapons.fire(code, this.ship.position, shipRotation, ship.width / 2, ship.height / 2, scale)
+        }
+      }
+      this.drawProjectiles()
       this.debugger?.draw(this.physics)
       this.publishPosition()
     }
@@ -109,6 +127,10 @@ export class PixiArena {
 
     const width = this.width
     const height = this.height
+    const previousBounds = this.physics.bounds
+    if (previousBounds.width > 0 && previousBounds.height > 0) {
+      this.weapons.resize(width / previousBounds.width, height / previousBounds.height)
+    }
     app.renderer.resize(width, height)
     water.clear().rect(0, 0, width, height).fill(WATER_COLOR)
     ship.position.set(width / 2, height / 2)
@@ -128,9 +150,22 @@ export class PixiArena {
     this.element.dataset.islandX = String(obstacle.x)
     this.element.dataset.islandY = String(obstacle.y)
     this.element.dataset.islandRadius = String(obstacle.radius)
+    this.drawProjectiles()
     this.debugger?.draw(this.physics)
     this.publishPosition()
     this.element.dataset.shipScale = String(ship.scale.x)
+  }
+
+  private drawProjectiles(): void {
+    const graphics = this.projectileGraphics
+    if (!graphics || !this.ship) return
+    const radius = gameplayConfig.projectile.radius * this.ship.scale.x
+    graphics.clear()
+    const positions = this.weapons.projectiles.map(({ id, x, y }) => {
+      graphics.circle(x, y, radius).fill('#18212c')
+      return { id, x, y }
+    })
+    this.element.dataset.projectiles = JSON.stringify(positions)
   }
 
   private publishPosition(): void {
