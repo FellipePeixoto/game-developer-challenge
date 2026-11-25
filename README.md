@@ -21,7 +21,7 @@ In development. Available now: main menu, Options (with validation and persisten
 
 ## Setup
 
-Requires Node.js 22.13 or later in the Node.js 22 line, or Node.js 24 and later. No environment variables are required at this stage.
+The project supports Node.js versions from 22.13.0 through 26.13.1, inclusive. Run `node --version` to check the active version. No environment variables are required at this stage.
 
 ```sh
 npm ci
