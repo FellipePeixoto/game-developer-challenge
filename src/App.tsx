@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MainMenu } from './MainMenu'
+import { BattleArena } from './BattleArena'
 import type { MenuAction } from './MainMenu'
 import { OptionsScreen } from './OptionsScreen'
 import { loadSessionOptions } from './sessionOptions'
@@ -37,6 +38,7 @@ export function App() {
   return (
     <main className="card inner-screen">
       <h1 ref={sessionHeading} tabIndex={-1}>Session setup</h1>
+      <BattleArena />
       <section aria-labelledby="session-settings">
         <h2 id="session-settings">Session settings</h2>
         <dl className="session-settings">
