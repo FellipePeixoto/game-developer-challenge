@@ -51,20 +51,22 @@ for (const [edge, turn] of [['top', 0], ['right', 784], ['bottom', 1568], ['left
     await hold(page, 'KeyW', 8000)
     const x = await value(arena, 'ship-x')
     const y = await value(arena, 'ship-y')
-    const box = await arena.boundingBox()
-    expect(box).not.toBeNull()
+    const { width, height } = await arena.evaluate(element => ({
+      width: element.clientWidth,
+      height: element.clientHeight,
+    }))
     expect(x).toBeGreaterThanOrEqual(0)
     expect(y).toBeGreaterThanOrEqual(0)
-    expect(x).toBeLessThanOrEqual(box!.width)
-    expect(y).toBeLessThanOrEqual(box!.height)
+    expect(x).toBeLessThanOrEqual(width)
+    expect(y).toBeLessThanOrEqual(height)
     const points = await corners(arena)
     const xs = points.filter((_, index) => index % 2 === 0)
     const ys = points.filter((_, index) => index % 2 === 1)
     expect(Math.min(...xs)).toBeGreaterThanOrEqual(-0.01)
     expect(Math.min(...ys)).toBeGreaterThanOrEqual(-0.01)
-    expect(Math.max(...xs)).toBeLessThanOrEqual(box!.width + 0.01)
-    expect(Math.max(...ys)).toBeLessThanOrEqual(box!.height + 0.01)
-    const clearance = { top: Math.min(...ys), right: box!.width - Math.max(...xs), bottom: box!.height - Math.max(...ys), left: Math.min(...xs) }
+    expect(Math.max(...xs)).toBeLessThanOrEqual(width + 0.01)
+    expect(Math.max(...ys)).toBeLessThanOrEqual(height + 0.01)
+    const clearance = { top: Math.min(...ys), right: width - Math.max(...xs), bottom: height - Math.max(...ys), left: Math.min(...xs) }
     expect(clearance[edge]).toBeLessThan(4)
     await hold(page, 'KeyW', 1000)
     expect(Math.abs(await value(arena, 'ship-x') - x)).toBeLessThan(4)
