@@ -1,25 +1,38 @@
 import { expect, test } from '@playwright/test'
 
-test('fits the game shell to 16:9 and fills it with the Pixi canvas', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 720 })
+test('keeps a 16:9 game frame and rotates it in mobile portrait', async ({ page, isMobile }) => {
+  const sizes = isMobile ? [
+    { viewport: { width: 432, height: 960 }, bounds: { x: 0, y: 96, width: 432, height: 768 } },
+    { viewport: { width: 960, height: 432 }, bounds: { x: 96, y: 0, width: 768, height: 432 } },
+  ] : [
+    { viewport: { width: 1440, height: 720 }, bounds: { x: 80, y: 0, width: 1280, height: 720 } },
+    { viewport: { width: 432, height: 960 }, bounds: { x: 0, y: 358.5, width: 432, height: 243 } },
+    { viewport: { width: 2560, height: 1440 }, bounds: { x: 320, y: 180, width: 1920, height: 1080 } },
+  ]
+  const [initialSize] = sizes
+  await page.setViewportSize(initialSize.viewport)
   await page.goto('/')
   const shell = page.locator('.game-shell')
   const arena = shell.locator('.battle-arena')
   const canvas = arena.locator('canvas')
 
-  await expect.poll(() => shell.boundingBox()).toEqual({ x: 80, y: 0, width: 1280, height: 720 })
+  await expect.poll(() => shell.boundingBox()).toEqual(initialSize.bounds)
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect(canvas).toBeVisible()
 
-  for (const { viewport, bounds } of [
-    { viewport: { width: 1440, height: 720 }, bounds: { x: 80, y: 0, width: 1280, height: 720 } },
-    { viewport: { width: 384, height: 800 }, bounds: { x: 0, y: 292, width: 384, height: 216 } },
-    { viewport: { width: 2560, height: 1440 }, bounds: { x: 320, y: 180, width: 1920, height: 1080 } },
-  ]) {
+  for (const { viewport, bounds } of sizes) {
     await page.setViewportSize(viewport)
     await expect.poll(() => shell.boundingBox()).toEqual(bounds)
     await expect.poll(() => arena.boundingBox()).toEqual(bounds)
     await expect.poll(() => canvas.boundingBox()).toEqual(bounds)
+
+    if (isMobile) {
+      await expect(canvas).toHaveAttribute('width', '768')
+      await expect(canvas).toHaveAttribute('height', '432')
+      await page.getByRole('button', { name: 'Pause', exact: true }).tap()
+      await expect(page.getByRole('heading', { name: 'Paused' })).toBeVisible()
+      await page.getByRole('button', { name: 'Resume' }).tap()
+    }
   }
 })
 

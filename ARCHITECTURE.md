@@ -14,6 +14,14 @@ The `src/captainLog/` modules separate navigation from presentation. `CaptainLog
 
 Resizable rectangular panels and buttons in the React UI use nine-slice rendering (9-patch) via CSS `border-image`. Each corner scales uniformly. Horizontal and vertical edges resize along their respective lengths, and the center fills the available space. Button variants and pressed states share the same slice geometry. Circular controls and their icons use `background-size: contain` to preserve their proportions.
 
+## Landscape game frame on mobile
+
+The game uses a shared 16:9 landscape frame for the arena, menus, and touch controls. This keeps their proportions consistent across desktop and mobile. The frame is centered and scales to fit the available viewport up to 1920 × 1080 CSS pixels. Text, spacing, and controls scale with the frame.
+
+On a touch device with a portrait viewport, CSS uses the viewport height as the available width and rotates the entire frame by 90°. In a landscape viewport, the frame follows the browser's orientation. The rotation runs inside the page and does not require the browser to lock the device orientation.
+
+The PixiJS canvas fills its arena host. `PixiArena.ts` uses the host's layout width and height when sizing the renderer and updating the simulation bounds. The CSS rotation affects the displayed frame while the simulation continues to use landscape coordinates.
+
 ## Arena and player collisions
 
 Approved responsibilities: `PixiArena.ts` owns the Pixi application, island drawing, collider dimensions, animation and resource cleanup. `ShipController.ts` reads movement input and applies the position resolved by physics. `Physics.ts` owns collision geometry and contact resolution using PixiJS shapes. `CollisionDebugger.ts` draws the same collider geometry without participating in game rules.

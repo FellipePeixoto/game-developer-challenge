@@ -141,10 +141,10 @@ export class PixiArena {
   }
 
   private get width(): number {
-    return Math.max(1, this.element.getBoundingClientRect().width)
+    return Math.max(1, this.element.clientWidth)
   }
 
   private get height(): number {
-    return Math.max(1, this.element.getBoundingClientRect().height)
+    return Math.max(1, this.element.clientHeight)
   }
 }
