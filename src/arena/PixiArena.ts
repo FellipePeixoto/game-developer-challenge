@@ -12,7 +12,7 @@ import { ShipController } from './ShipController'
 import { Physics } from './Physics'
 import { PlayerWeapons } from './PlayerWeapons'
 import { gameplayConfig } from './gameplayConfig'
-import { MatchSession, type MatchEndReason } from './MatchSession'
+import { MatchSession, type MatchEndReason, type MatchSnapshot } from './MatchSession'
 import type { CollisionDebugger } from './CollisionDebugger'
 
 const WATER_COLOR = '#28a6c4'
@@ -35,10 +35,12 @@ export class PixiArena {
   private active = false
   private lastTime = 0
   private ship?: Sprite
+  private playerHealthBar?: Graphics
   private fleet?: EnemyFleet
   private enemyView?: EnemyView
   private readonly enemyWeapons = new EnemyProjectiles()
   private readonly match: MatchSession
+  private lastPublishedMatch = ''
   private terrain?: Container
   private readonly tileTextures = new Map<number, Texture>()
   private controller?: ShipController
@@ -56,6 +58,7 @@ export class PixiArena {
     private readonly spawnIntervalSeconds: number,
     durationSeconds: number,
     private readonly onEnd: (reason: MatchEndReason) => void,
+    private readonly onMatchChange: (match: MatchSnapshot) => void,
   ) {
     this.match = new MatchSession(durationSeconds)
   }
@@ -89,6 +92,8 @@ export class PixiArena {
     this.ship = new Sprite(shipTexture)
     this.ship.anchor.set(0.5)
     app.stage.addChild(this.ship)
+    this.playerHealthBar = new Graphics()
+    app.stage.addChild(this.playerHealthBar)
     const scenario = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('enemy') : null
     this.fleet = new EnemyFleet(this.spawnIntervalSeconds, this.random, enemyTexture.width, enemyTexture.height,
       scenario === 'chaser' || scenario === 'shooter' ? scenario : undefined)
@@ -131,6 +136,7 @@ export class PixiArena {
     this.tileTextures.clear()
     this.app = undefined
     this.ship = undefined
+    this.playerHealthBar = undefined
     this.fleet = undefined
     this.enemyView = undefined
     this.terrain = undefined
@@ -163,6 +169,7 @@ export class PixiArena {
       const enemyDamage = this.enemyWeapons.advance(deltaSeconds, scale, this.physics)
       this.match.damage(impactDamage + enemyDamage)
       if (this.match.endReason) {
+        this.drawPlayerHealth()
         this.drawEnemies()
         this.publishPosition()
         this.publishMatch()
@@ -183,6 +190,7 @@ export class PixiArena {
         }
       }
       this.drawProjectiles()
+      this.drawPlayerHealth()
       this.drawEnemies()
       this.debugger?.draw(this.physics)
       this.publishPosition()
@@ -195,6 +203,12 @@ export class PixiArena {
     this.element.dataset.remainingSeconds = String(this.match.remainingSeconds)
     this.element.dataset.playerHealth = String(this.match.health)
     this.element.dataset.score = String(this.match.score)
+    const snapshot = this.match.snapshot()
+    const key = `${snapshot.score}:${snapshot.remainingSeconds}:${snapshot.health}`
+    if (key !== this.lastPublishedMatch) {
+      this.lastPublishedMatch = key
+      this.onMatchChange(snapshot)
+    }
   }
 
   private finishMatch(): void {
@@ -274,10 +288,23 @@ export class PixiArena {
       }
     }
     this.drawProjectiles()
+    this.drawPlayerHealth()
     this.drawEnemies()
     this.debugger?.draw(this.physics)
     this.publishPosition()
     this.element.dataset.shipScale = String(ship.scale.x)
+  }
+
+  private drawPlayerHealth(): void {
+    const { ship, playerHealthBar: bar } = this
+    if (!ship || !bar) return
+    const width = ship.width * 0.7
+    const height = Math.max(4, 5 * ship.scale.x)
+    bar.clear()
+    bar.rect(0, 0, width, height).fill('#9f302b')
+    bar.rect(0, 0, width * this.match.health / gameplayConfig.player.maxHealth, height).fill('#63c766')
+    bar.rect(0, 0, width, height).stroke({ color: '#18212c', width: Math.max(1, ship.scale.x) })
+    bar.position.set(ship.x - width / 2, ship.y - ship.height / 2 - 12 * ship.scale.x)
   }
 
   private drawEnemies(): void {

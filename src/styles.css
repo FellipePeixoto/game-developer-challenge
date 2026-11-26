@@ -175,7 +175,20 @@ button:disabled { cursor: default; opacity: .55; }
 [data-icon='Space'] { --button-icon: url('../assets/png/retina/ui/controls/icon_fire_front.png'); }
 [data-icon='KeyE'] { --button-icon: url('../assets/png/retina/ui/controls/icon_fire_right.png'); }
 
-.session-hud { position: absolute; z-index: 1; top: 3cqh; right: 2cqw; --button-size: 6cqh; }
+.session-hud { position: absolute; z-index: 1; top: 3cqh; right: 2cqw; display: flex; align-items: center; gap: .6cqw; --button-size: 6cqh; }
+.match-hud { display: flex; gap: .4cqw; }
+.match-hud span {
+  display: grid;
+  place-items: center;
+  min-height: 5cqh;
+  padding: .35cqh .9cqw;
+  background: url('../assets/png/retina/ui/hud/counter_panel.png') center / 100% 100% no-repeat;
+  color: #fff0c8;
+  font-size: 1.15cqw;
+  font-weight: 800;
+  white-space: nowrap;
+  text-shadow: 0 .1rem #18212c;
+}
 .touch-controls {
   position: absolute;
   z-index: 1;

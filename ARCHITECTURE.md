@@ -71,3 +71,7 @@ An overlap with the player triggers impact once and disables the Chaser's moveme
 `MatchSession.ts` owns remaining active play time, player health, score, and the terminal reason. `PixiArena.ts` advances that state during active animation steps. Time expiry stops the step before movement or combat; lethal damage stops it before player attacks or further scoring. Ending clears input and prevents subsequent simulation updates. Pause does not advance the match clock.
 
 `BattleArena` passes the saved duration to Pixi and reports the terminal reason to `App`. `App` displays the end overlay and remounts `BattleArena` for a restart, giving the new match fresh Pixi resources, simulation state, and input. Development state attributes expose remaining time and player health for E2E checks.
+
+## Player health and HUD
+
+`PixiArena.ts` draws the player health bar above the ship and updates its position with ship movement and arena resizing. `MatchSession.ts` provides a snapshot with score, whole remaining seconds, and player health. `PixiArena.ts` sends snapshots to React only when one of those displayed values changes. `BattleArena.tsx` holds the latest snapshot and passes it to `MatchHud.tsx`, which renders score, time, health, and match phase as a named semantic region. The region does not use a live announcement role.

@@ -38,6 +38,7 @@ export function App() {
           restorePauseFocus={screen.name === 'play' && screen.restorePauseFocus}
           onPause={() => setScreen({ name: 'pause', settings: screen.settings })}
           onEnd={reason => setScreen({ name: 'end', settings: screen.settings, reason })}
+          phase={screen.name === 'play' ? 'Playing' : screen.name === 'end' ? 'Finished' : 'Paused'}
         />
       )}
       {screen.name !== 'play' && (

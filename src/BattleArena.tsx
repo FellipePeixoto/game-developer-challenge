@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArenaInput, type ArenaCommand } from './arena/ArenaInput'
 import { PixiArena } from './arena/PixiArena'
-import type { MatchEndReason } from './arena/MatchSession'
+import type { MatchEndReason, MatchSnapshot } from './arena/MatchSession'
+import { MatchHud } from './MatchHud'
 
 type LoadState = 'loading' | 'error' | 'ready'
 
@@ -12,9 +13,10 @@ interface BattleArenaProps {
   restorePauseFocus?: boolean
   onPause: () => void
   onEnd: (reason: MatchEndReason) => void
+  phase: 'Playing' | 'Paused' | 'Finished'
 }
 
-export function BattleArena({ active, spawnIntervalSeconds, durationSeconds, restorePauseFocus, onPause, onEnd }: BattleArenaProps) {
+export function BattleArena({ active, spawnIntervalSeconds, durationSeconds, restorePauseFocus, onPause, onEnd, phase }: BattleArenaProps) {
   const host = useRef<HTMLDivElement>(null)
   const pauseButton = useRef<HTMLButtonElement>(null)
   const mountedArena = useRef<PixiArena | null>(null)
@@ -22,6 +24,7 @@ export function BattleArena({ active, spawnIntervalSeconds, durationSeconds, res
   const input = useRef<ArenaInput | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [match, setMatch] = useState<MatchSnapshot | null>(null)
 
   if (input.current === null) input.current = new ArenaInput()
 
@@ -33,7 +36,7 @@ export function BattleArena({ active, spawnIntervalSeconds, durationSeconds, res
     if (!container || !controls) return
 
     const arena = new PixiArena(container, controls, spawnIntervalSeconds, durationSeconds,
-      reason => onEndRef.current(reason))
+      reason => onEndRef.current(reason), setMatch)
     mountedArena.current = arena
     void arena.mount().then(
       () => { if (mountedArena.current === arena) setLoadState('ready') },
@@ -82,9 +85,10 @@ export function BattleArena({ active, spawnIntervalSeconds, durationSeconds, res
         {ArenaInput.fireCommands.map(renderControl)}
       </div>
     </>}
-    {active && (
+    {match && (
       <section className="session-hud" aria-label="Battle controls">
-        <button ref={pauseButton} type="button" className="round-button" data-icon="pause" aria-label="Pause" onClick={onPause} />
+        <MatchHud match={match} phase={phase} />
+        {active && <button ref={pauseButton} type="button" className="round-button" data-icon="pause" aria-label="Pause" onClick={onPause} />}
       </section>
     )}
   </>

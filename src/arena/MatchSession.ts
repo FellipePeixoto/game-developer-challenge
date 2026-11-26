@@ -1,6 +1,12 @@
 import { gameplayConfig } from './gameplayConfig'
 
 export type MatchEndReason = 'time' | 'defeat'
+export interface MatchSnapshot {
+  score: number
+  remainingSeconds: number
+  health: number
+  maxHealth: number
+}
 
 export class MatchSession {
   remainingSeconds: number
@@ -26,5 +32,14 @@ export class MatchSession {
 
   awardKill(): void {
     if (!this.endReason) this.score += 1
+  }
+
+  snapshot(): MatchSnapshot {
+    return {
+      score: this.score,
+      remainingSeconds: Math.ceil(this.remainingSeconds),
+      health: this.health,
+      maxHealth: gameplayConfig.player.maxHealth,
+    }
   }
 }
