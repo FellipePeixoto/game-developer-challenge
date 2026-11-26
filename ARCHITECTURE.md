@@ -42,11 +42,13 @@ The debugger is dynamically imported and instantiated only inside `import.meta.e
 
 `Physics.ts` checks each projectile's movement segment against land rectangles expanded by the projectile radius, including rounded corner contacts. A projectile is removed on obstacle contact, when its center leaves the arena, or when its lifetime expires. `PixiArena.ts` advances weapons inside the active simulation step and draws the remaining projectiles. On resize, their positions scale with the arena. Pause suspends their movement and cooldowns and clears held and pending input.
 
-## Simulation seed and Chaser spawn
+## Simulation seed and enemy spawning
 
 Each arena instance owns an independent 32-bit pseudorandom sequence. `SimulationRandom.ts` initializes the sequence from browser-generated entropy or, in development, from the `seed` URL parameter. The sequence starts fresh with each new arena.
 
-`Chaser.ts` samples positions within the arena and checks the entire starting ship rectangle against the land obstacles and arena bounds. It also enforces the configured minimum center-to-center distance from the player. If random sampling finds no safe position, it checks the four outermost valid centers.
+`EnemyFleet.ts` owns the active enemy instances and the spawn clock. React captures the saved interval at match start and passes it to `PixiArena.ts`, which advances the clock only during active simulation steps. At each interval, the fleet uses the simulation random sequence and the configured Chaser probability to choose an enemy type. The default distribution gives each type equal probability.
+
+The fleet checks the entire starting ship rectangle against land and arena bounds and enforces the configured minimum center-to-center distance from the player. If random sampling finds no safe position, it checks the four outermost valid centers. The fleet skips that spawn if all checks fail and tries again at the next interval. `PixiArena.ts` owns the sprites and disposes of them as enemies leave the fleet. The development-only `enemy` URL parameter selects an isolated Chaser or Shooter.
 
 ## Chaser pursuit and impact
 

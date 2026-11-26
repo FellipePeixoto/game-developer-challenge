@@ -5,8 +5,7 @@ import explosionUrl from '../../assets/png/retina/effects/explosion_1.png'
 import terrainUrl from '../../assets/tilesheet/tiles_sheet_retina.png'
 import { arenaMap, isLandTile, mapColumns, mapLeft, mapObstacles, mapRows, oceanTile, submergedTile, tileSize } from './ArenaMap'
 import { ArenaInput } from './ArenaInput'
-import { Chaser, findChaserSpawn } from './Chaser'
-import { Shooter } from './Shooter'
+import { EnemyFleet, type Enemy } from './EnemyFleet'
 import { EnemyProjectiles } from './EnemyProjectiles'
 import { createSimulationRandom, readSimulationSeed } from './SimulationRandom'
 import { ShipController } from './ShipController'
@@ -20,6 +19,13 @@ const WATER_COLOR = '#28a6c4'
 const SHIP_COLLIDER_WIDTH_FACTOR = 0.7
 const SHIP_COLLIDER_HEIGHT_FACTOR = 0.7
 
+interface EnemyView {
+  layer: Container
+  shipTexture: Texture
+  explosionTexture: Texture
+  sprites: Map<Enemy, { ship: Sprite; explosion?: Sprite }>
+}
+
 export class PixiArena {
   private app?: Application
   private observer?: ResizeObserver
@@ -28,13 +34,9 @@ export class PixiArena {
   private active = false
   private lastTime = 0
   private ship?: Sprite
-  private chaser?: Sprite
-  private explosion?: Sprite
-  private readonly chaserSimulation = new Chaser()
-  private readonly shooterSimulation = new Shooter()
+  private fleet?: EnemyFleet
+  private enemyView?: EnemyView
   private readonly enemyWeapons = new EnemyProjectiles()
-  private readonly shooterScenario = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('enemy') === 'shooter'
   private playerHealth: number = gameplayConfig.player.maxHealth
   private readonly score = 0
   private terrain?: Container
@@ -51,10 +53,11 @@ export class PixiArena {
   constructor(
     private readonly element: HTMLElement,
     private readonly input: ArenaInput,
+    private readonly spawnIntervalSeconds: number,
   ) {}
 
   async mount(): Promise<void> {
-    const [shipTexture, chaserTexture, explosionTexture, tiles] = await Promise.all([
+    const [shipTexture, enemyTexture, explosionTexture, tiles] = await Promise.all([
       Assets.load<Texture>(shipUrl),
       Assets.load<Texture>(chaserUrl),
       Assets.load<Texture>(explosionUrl),
@@ -82,14 +85,11 @@ export class PixiArena {
     this.ship = new Sprite(shipTexture)
     this.ship.anchor.set(0.5)
     app.stage.addChild(this.ship)
-    this.chaser = new Sprite(chaserTexture)
-    this.chaser.anchor.set(0.5)
-    this.chaser.visible = false
-    app.stage.addChild(this.chaser)
-    this.explosion = new Sprite(explosionTexture)
-    this.explosion.anchor.set(0.5)
-    this.explosion.visible = false
-    app.stage.addChild(this.explosion)
+    const scenario = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('enemy') : null
+    this.fleet = new EnemyFleet(this.spawnIntervalSeconds, this.random, enemyTexture.width, enemyTexture.height,
+      scenario === 'chaser' || scenario === 'shooter' ? scenario : undefined)
+    this.enemyView = { layer: new Container(), shipTexture: enemyTexture, explosionTexture, sprites: new Map() }
+    app.stage.addChild(this.enemyView.layer)
     this.controller = new ShipController(this.ship, this.input, this.physics)
     this.projectileGraphics = new Graphics()
     app.stage.addChild(this.projectileGraphics)
@@ -126,32 +126,28 @@ export class PixiArena {
     this.tileTextures.clear()
     this.app = undefined
     this.ship = undefined
-    this.chaser = undefined
-    this.explosion = undefined
+    this.fleet = undefined
+    this.enemyView = undefined
     this.terrain = undefined
     this.controller = undefined
     this.projectileGraphics = undefined
     delete this.element.dataset.projectiles
+    delete this.element.dataset.enemies
     delete this.element.dataset.chaserSpawn
     delete this.element.dataset.chaserState
     delete this.element.dataset.shooterState
   }
 
   private readonly tick = (now: number): void => {
-    if (!this.controller || !this.ship) return
+    if (!this.controller || !this.ship || !this.fleet) return
     const deltaSeconds = Math.min((now - this.lastTime) / 1000, 0.05)
     this.lastTime = now
     if (this.active) {
       this.controller.update(deltaSeconds)
       const scale = this.ship.scale.x
-      if (this.chaserSimulation.update(deltaSeconds, scale, this.ship.position, this.physics)) {
-        this.playerHealth = Math.max(0, this.playerHealth - gameplayConfig.chaser.impactDamage)
-      }
-      if (this.shooterSimulation.update(deltaSeconds, scale, this.ship.position, this.physics)) {
-        this.enemyWeapons.fire(this.shooterSimulation, this.ship.position)
-      }
+      const impactDamage = this.fleet.update(deltaSeconds, scale, this.ship.position, this.physics, this.enemyWeapons)
       const enemyDamage = this.enemyWeapons.advance(deltaSeconds, scale, this.physics)
-      this.playerHealth = Math.max(0, this.playerHealth - enemyDamage)
+      this.playerHealth = Math.max(0, this.playerHealth - impactDamage - enemyDamage)
       const radius = gameplayConfig.projectile.radius * scale
       this.weapons.advance(deltaSeconds, scale, (start, end) => this.physics.blocksProjectile(start, end, radius))
       const { ship, shipRotation } = this.physics
@@ -161,7 +157,7 @@ export class PixiArena {
         }
       }
       this.drawProjectiles()
-      this.drawChaser()
+      this.drawEnemies()
       this.debugger?.draw(this.physics)
       this.publishPosition()
     }
@@ -205,20 +201,23 @@ export class PixiArena {
   }
 
   private resize(): void {
-    const { app, ship, terrain, chaser, explosion, chaserSimulation } = this
-    if (!app || !ship || !terrain || !chaser || !explosion) return
+    const { app, ship, terrain, fleet } = this
+    if (!app || !ship || !terrain || !fleet) return
 
     const width = this.width
     const height = this.height
     const { width: previousWidth, height: previousHeight } = this.physics.bounds
-    if (previousWidth > 0 && previousHeight > 0) {
-      this.weapons.resize(width / previousWidth, height / previousHeight)
-      this.enemyWeapons.resize(width / previousWidth, height / previousHeight)
-    }
     app.renderer.resize(width, height, window.devicePixelRatio)
     terrain.scale.set(width / mapColumns, height / mapRows)
     ship.position.set(width / 2, height / 2)
     ship.scale.set(Math.min(width / 960, height / 540))
+    if (previousWidth > 0 && previousHeight > 0) {
+      const xRatio = width / previousWidth
+      const yRatio = height / previousHeight
+      this.weapons.resize(xRatio, yRatio)
+      this.enemyWeapons.resize(xRatio, yRatio)
+      fleet.resize(xRatio, yRatio, ship.scale.x)
+    }
     this.physics.bounds.width = width
     this.physics.bounds.height = height
     this.physics.ship.width = ship.width * SHIP_COLLIDER_WIDTH_FACTOR
@@ -227,82 +226,80 @@ export class PixiArena {
     this.physics.ship.y = ship.y - this.physics.ship.height / 2
     const { obstacles } = this.physics
     obstacles.splice(0, obstacles.length, ...mapObstacles(width, height))
-    chaser.scale.set(ship.scale.x)
-    explosion.scale.set(ship.scale.x)
-    if (this.shooterScenario && this.shooterSimulation.ready) {
-      const shooter = this.shooterSimulation
-      shooter.setHull(shooter.x * width / previousWidth, shooter.y * height / previousHeight,
-        chaser.width * SHIP_COLLIDER_WIDTH_FACTOR, chaser.height * SHIP_COLLIDER_HEIGHT_FACTOR)
-    } else if (chaserSimulation.phase === 'waiting') {
-      this.spawnChaser(chaser, ship)
-    } else {
-      chaserSimulation.setHull(
-        chaserSimulation.x * width / previousWidth,
-        chaserSimulation.y * height / previousHeight,
-        chaser.width * SHIP_COLLIDER_WIDTH_FACTOR,
-        chaser.height * SHIP_COLLIDER_HEIGHT_FACTOR,
-      )
+    if (import.meta.env.DEV) {
+      const spawn = fleet.spawnScenario(this.physics, ship.position, ship.scale.x)
+      if (spawn && fleet.scenario === 'chaser') {
+        const { x, y, width, height } = spawn
+        this.element.dataset.chaserSpawn = JSON.stringify({ x: x + width / 2, y: y + height / 2, width, height })
+      }
     }
     this.drawProjectiles()
-    this.drawChaser()
+    this.drawEnemies()
     this.debugger?.draw(this.physics)
     this.publishPosition()
     this.element.dataset.shipScale = String(ship.scale.x)
   }
 
-  private spawnChaser(chaser: Sprite, ship: Sprite): void {
-    const { bounds, obstacles } = this.physics
-    const spawn = findChaserSpawn({
-      bounds,
-      obstacles,
-      player: ship.position,
-      width: chaser.width,
-      height: chaser.height,
-      minimumDistance: (this.shooterScenario ? gameplayConfig.shooter : gameplayConfig.chaser).minimumSpawnDistance * ship.scale.x,
-      random: this.random,
-    })
-    if (!spawn) return
+  private drawEnemies(): void {
+    const { fleet, enemyView, ship: player } = this
+    if (!fleet || !enemyView || !player) return
+    const { layer, sprites, shipTexture, explosionTexture } = enemyView
+    for (const [enemy, visual] of sprites) {
+      if (fleet.enemies.has(enemy)) continue
+      visual.ship.destroy()
+      visual.explosion?.destroy()
+      sprites.delete(enemy)
+    }
 
-    const x = spawn.x + spawn.width / 2
-    const y = spawn.y + spawn.height / 2
-    if (this.shooterScenario) {
-      this.shooterSimulation.setHull(x, y, spawn.width * SHIP_COLLIDER_WIDTH_FACTOR, spawn.height * SHIP_COLLIDER_HEIGHT_FACTOR)
-      this.shooterSimulation.ready = true
-      chaser.tint = 0xffb85c
-      return
+    for (const enemy of fleet.enemies) {
+      let visual = sprites.get(enemy)
+      if (!visual) {
+        const ship = new Sprite(shipTexture)
+        ship.anchor.set(0.5)
+        if (enemy.type === 'shooter') ship.tint = 0xffb85c
+        layer.addChild(ship)
+        visual = { ship }
+        if (enemy.type === 'chaser') {
+          const explosion = new Sprite(explosionTexture)
+          explosion.anchor.set(0.5)
+          layer.addChild(explosion)
+          visual.explosion = explosion
+        }
+        sprites.set(enemy, visual)
+      }
+
+      const { x, y, rotation } = enemy.ship
+      visual.ship.position.set(x, y)
+      visual.ship.rotation = rotation
+      visual.ship.scale.set(player.scale.x)
+      if (enemy.type === 'chaser' && visual.explosion) {
+        visual.ship.visible = enemy.ship.phase === 'pursuing'
+        visual.explosion.visible = enemy.ship.phase === 'exploding'
+        visual.explosion.position.set(x, y)
+        visual.explosion.scale.set(player.scale.x)
+        visual.explosion.alpha = enemy.ship.explosionOpacity
+      }
     }
-    this.chaserSimulation.setHull(x, y, spawn.width * SHIP_COLLIDER_WIDTH_FACTOR, spawn.height * SHIP_COLLIDER_HEIGHT_FACTOR)
-    this.chaserSimulation.startPursuit()
-    if (import.meta.env.DEV) {
-      this.element.dataset.chaserSpawn = JSON.stringify({ x, y, width: spawn.width, height: spawn.height })
-    }
+    if (import.meta.env.DEV) this.publishEnemyState(fleet)
   }
 
-  private drawChaser(): void {
-    const { chaser, explosion, chaserSimulation } = this
-    if (!chaser || !explosion) return
-    if (this.shooterScenario) {
-      const shooter = this.shooterSimulation
-      chaser.visible = shooter.ready
-      chaser.position.set(shooter.x, shooter.y)
-      chaser.rotation = shooter.rotation
+  private publishEnemyState(fleet: EnemyFleet): void {
+    if (!fleet.scenario) {
+      this.element.dataset.enemies = JSON.stringify(Array.from(fleet.enemies, ({ type }) => ({ type })))
+      return
+    }
+    const enemy = fleet.enemies.values().next().value
+    if (!enemy) return
+    const { x, y, rotation } = enemy.ship
+    if (enemy.type === 'shooter') {
       this.element.dataset.shooterState = JSON.stringify({
-        x: shooter.x, y: shooter.y, rotation: shooter.rotation,
+        x, y, rotation,
         playerHealth: this.playerHealth,
         projectiles: this.enemyWeapons.projectiles.map(({ id, x, y }) => ({ id, x, y })),
       })
-      return
-    }
-    const { phase, x, y, rotation, explosionOpacity } = chaserSimulation
-    chaser.visible = phase === 'pursuing'
-    chaser.position.set(x, y)
-    chaser.rotation = rotation
-    explosion.visible = phase === 'exploding'
-    explosion.position.set(x, y)
-    explosion.alpha = explosionOpacity
-    if (import.meta.env.DEV) {
+    } else {
       this.element.dataset.chaserState = JSON.stringify({
-        phase, x, y, rotation, playerHealth: this.playerHealth, score: this.score,
+        phase: enemy.ship.phase, x, y, rotation, playerHealth: this.playerHealth, score: this.score,
       })
     }
   }

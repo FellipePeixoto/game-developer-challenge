@@ -6,11 +6,12 @@ type LoadState = 'loading' | 'error' | 'ready'
 
 interface BattleArenaProps {
   active: boolean
+  spawnIntervalSeconds: number
   restorePauseFocus?: boolean
   onPause: () => void
 }
 
-export function BattleArena({ active, restorePauseFocus, onPause }: BattleArenaProps) {
+export function BattleArena({ active, spawnIntervalSeconds, restorePauseFocus, onPause }: BattleArenaProps) {
   const host = useRef<HTMLDivElement>(null)
   const pauseButton = useRef<HTMLButtonElement>(null)
   const mountedArena = useRef<PixiArena | null>(null)
@@ -25,7 +26,7 @@ export function BattleArena({ active, restorePauseFocus, onPause }: BattleArenaP
     const controls = input.current
     if (!container || !controls) return
 
-    const arena = new PixiArena(container, controls)
+    const arena = new PixiArena(container, controls, spawnIntervalSeconds)
     mountedArena.current = arena
     void arena.mount().then(
       () => { if (mountedArena.current === arena) setLoadState('ready') },
@@ -36,7 +37,7 @@ export function BattleArena({ active, restorePauseFocus, onPause }: BattleArenaP
       mountedArena.current = null
       arena.destroy()
     }
-  }, [attempt])
+  }, [attempt, spawnIntervalSeconds])
 
   useEffect(() => {
     mountedArena.current?.setActive(active && loadState === 'ready')

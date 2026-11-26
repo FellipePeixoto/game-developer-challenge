@@ -71,11 +71,13 @@ The default reload time is 0.35 seconds for the bow and 0.6 seconds for each sid
 
 Movement and collision tests calculate control durations from the configured ship speeds. The combat tests use the Vite development server and load a fixed combat configuration so that island contact, arena exit, and expiry can each be tested with real controls.
 
-The Chaser starts at least 160 reference pixels from the player, measured center to center. Adjust the minimum in `gameplayConfig.ts`. To reproduce a spawn in development, open `/?seed=42` and select **Play**. The same seed and arena dimensions reproduce the same initial position. Supported seeds are integers from 0 to 4294967295.
+In a standard match, the first enemy spawns after the saved **Enemy spawn time**, then the cycle repeats at that interval. Pause suspends the cycle. Each spawn has a 50% chance of being a Chaser and a 50% chance of being a Shooter. Adjust the distribution with `enemySpawn.chaserChance` in `gameplayConfig.ts`. Both types spawn in clear water at least 160 reference pixels from the player, measured center to center.
+
+To reproduce a match in development, open `/?seed=6444` and select **Play**. Spawns are repeatable with the same seed, arena dimensions, settings, and player inputs. Supported seeds are integers from 0 to 4294967295.
 
 The Chaser pursues the player at 100 reference pixels per second and stops when land blocks its path. The player starts with 3 health. A Chaser impact costs 1 health, leaves the score unchanged, and removes the Chaser after a 0.4-second explosion. These values are set in `gameplayConfig.ts`.
 
-In development, open `/?enemy=shooter&seed=1487` and select **Play** to use the Shooter scenario. Remove `enemy=shooter` to return to the Chaser scenario. Reloading starts a fresh simulation. The Shooter uses the enemy ship texture with an amber tint and fires red projectiles. Both enemy types will enter the default spawn cycle in the next gameplay delivery.
+In development, open `/?enemy=chaser&seed=42` or `/?enemy=shooter&seed=1487` and select **Play** to start with a single enemy. Remove the `enemy` parameter to play a standard match. The Shooter uses the enemy ship texture with an amber tint and fires red projectiles.
 
 The Shooter approaches at 80 reference pixels per second, stops within a 260-pixel attack range, and fires every 1.5 seconds while in range. Land blocks its movement. Each projectile travels at 240 reference pixels per second, lasts up to 3 seconds, and deals 1 damage once before removal. Land and arena boundaries also remove enemy projectiles. All Shooter values are set in the `shooter` section of `gameplayConfig.ts`. Pause suspends movement, shots, and cooldowns.
 

@@ -25,7 +25,7 @@ async function chaserState(arena: Locator): Promise<ChaserState> {
 }
 
 async function openBattle(page: Page, seed: number) {
-  await page.goto(`/?seed=${seed}`)
+  await page.goto(`/?enemy=chaser&seed=${seed}`)
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   const arena = page.getByRole('img', { name: 'Battle arena' })
   await expect(arena).toHaveAttribute('data-chaser-spawn', /\S+/)

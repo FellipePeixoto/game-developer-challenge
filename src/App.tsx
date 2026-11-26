@@ -29,6 +29,7 @@ export function App() {
       {inBattle && (
         <BattleArena
           active={screen.name === 'play'}
+          spawnIntervalSeconds={screen.settings.spawnIntervalSeconds}
           restorePauseFocus={screen.name === 'play' && screen.restorePauseFocus}
           onPause={() => setScreen({ name: 'pause', settings: screen.settings })}
         />

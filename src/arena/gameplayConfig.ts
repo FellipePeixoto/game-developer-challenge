@@ -1,4 +1,7 @@
 export const gameplayConfig = {
+  enemySpawn: {
+    chaserChance: 0.5,
+  },
   player: {
     maxHealth: 3,
     // pixels/sec
