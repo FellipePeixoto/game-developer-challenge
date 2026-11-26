@@ -12,6 +12,7 @@ import { ShipController } from './ShipController'
 import { Physics } from './Physics'
 import { PlayerWeapons } from './PlayerWeapons'
 import { gameplayConfig } from './gameplayConfig'
+import { MatchSession, type MatchEndReason } from './MatchSession'
 import type { CollisionDebugger } from './CollisionDebugger'
 
 const WATER_COLOR = '#28a6c4'
@@ -37,8 +38,7 @@ export class PixiArena {
   private fleet?: EnemyFleet
   private enemyView?: EnemyView
   private readonly enemyWeapons = new EnemyProjectiles()
-  private playerHealth: number = gameplayConfig.player.maxHealth
-  private score = 0
+  private readonly match: MatchSession
   private terrain?: Container
   private readonly tileTextures = new Map<number, Texture>()
   private controller?: ShipController
@@ -54,7 +54,11 @@ export class PixiArena {
     private readonly element: HTMLElement,
     private readonly input: ArenaInput,
     private readonly spawnIntervalSeconds: number,
-  ) {}
+    durationSeconds: number,
+    private readonly onEnd: (reason: MatchEndReason) => void,
+  ) {
+    this.match = new MatchSession(durationSeconds)
+  }
 
   async mount(): Promise<void> {
     const [shipTexture, enemyTexture, explosionTexture, tiles] = await Promise.all([
@@ -104,13 +108,14 @@ export class PixiArena {
     this.observer = new ResizeObserver(() => this.resize())
     this.observer.observe(this.element)
     this.element.appendChild(app.canvas)
+    this.publishMatch()
     this.lastTime = performance.now()
     this.animationFrame = requestAnimationFrame(this.tick)
   }
 
   setActive(active: boolean): void {
     this.active = active
-    if (active) this.input.start()
+    if (active && !this.match.endReason) this.input.start()
     else this.input.stop()
   }
 
@@ -134,6 +139,8 @@ export class PixiArena {
     delete this.element.dataset.projectiles
     delete this.element.dataset.enemies
     delete this.element.dataset.score
+    delete this.element.dataset.playerHealth
+    delete this.element.dataset.remainingSeconds
     delete this.element.dataset.chaserSpawn
     delete this.element.dataset.chaserState
     delete this.element.dataset.shooterState
@@ -144,16 +151,29 @@ export class PixiArena {
     const deltaSeconds = Math.min((now - this.lastTime) / 1000, 0.05)
     this.lastTime = now
     if (this.active) {
+      this.match.advance(deltaSeconds)
+      this.publishMatch()
+      if (this.match.endReason) {
+        this.finishMatch()
+        return
+      }
       this.controller.update(deltaSeconds)
       const scale = this.ship.scale.x
       const impactDamage = this.fleet.update(deltaSeconds, scale, this.ship.position, this.physics, this.enemyWeapons)
       const enemyDamage = this.enemyWeapons.advance(deltaSeconds, scale, this.physics)
-      this.playerHealth = Math.max(0, this.playerHealth - impactDamage - enemyDamage)
+      this.match.damage(impactDamage + enemyDamage)
+      if (this.match.endReason) {
+        this.drawEnemies()
+        this.publishPosition()
+        this.publishMatch()
+        this.finishMatch()
+        return
+      }
       const radius = gameplayConfig.projectile.radius * scale
       this.weapons.advance(deltaSeconds, scale, (start, end) => {
         if (this.physics.blocksProjectile(start, end, radius)) return true
         const result = this.fleet!.hitProjectile(start, end, radius, scale, this.physics)
-        if (result === 'kill') this.score += 1
+        if (result === 'kill') this.match.awardKill()
         return result !== 'miss'
       })
       const { ship, shipRotation } = this.physics
@@ -166,7 +186,21 @@ export class PixiArena {
       this.drawEnemies()
       this.debugger?.draw(this.physics)
       this.publishPosition()
+      this.publishMatch()
     }
+    this.animationFrame = requestAnimationFrame(this.tick)
+  }
+
+  private publishMatch(): void {
+    this.element.dataset.remainingSeconds = String(this.match.remainingSeconds)
+    this.element.dataset.playerHealth = String(this.match.health)
+    this.element.dataset.score = String(this.match.score)
+  }
+
+  private finishMatch(): void {
+    if (!this.match.endReason) return
+    this.setActive(false)
+    this.onEnd(this.match.endReason)
     this.animationFrame = requestAnimationFrame(this.tick)
   }
 
@@ -301,7 +335,7 @@ export class PixiArena {
   }
 
   private publishEnemyState(fleet: EnemyFleet): void {
-    this.element.dataset.score = String(this.score)
+    this.element.dataset.score = String(this.match.score)
     this.element.dataset.enemies = JSON.stringify(Array.from(fleet.enemies, ({ type, health }) => ({ type, health })))
     if (!fleet.scenario) {
       return
@@ -311,14 +345,14 @@ export class PixiArena {
     const { x, y, rotation } = enemy.ship
     if (enemy.type === 'shooter') {
       this.element.dataset.shooterState = JSON.stringify({
-        x, y, rotation, health: enemy.health, score: this.score,
-        playerHealth: this.playerHealth,
+        x, y, rotation, health: enemy.health, score: this.match.score,
+        playerHealth: this.match.health,
         projectiles: this.enemyWeapons.projectiles.map(({ id, x, y }) => ({ id, x, y })),
       })
     } else {
       this.element.dataset.chaserState = JSON.stringify({
         phase: enemy.ship.phase, x, y, rotation, health: enemy.health,
-        playerHealth: this.playerHealth, score: this.score,
+        playerHealth: this.match.health, score: this.match.score,
       })
     }
   }

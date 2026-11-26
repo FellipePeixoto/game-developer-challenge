@@ -65,3 +65,9 @@ An overlap with the player triggers impact once and disables the Chaser's moveme
 `EnemyFleet.ts` owns each enemy's remaining health and removes a ship when a player projectile reduces it to zero. `Physics.ts` calculates projectile contact with rotated enemy hulls using the same geometry as player ship contact. `PlayerWeapons.ts` removes a projectile after its first contact; land and arena blocking take precedence within a simulation step. Chasers in the impact explosion phase cannot take projectile damage. A Chaser destroyed by impact awards no point.
 
 `PixiArena.ts` awards one point for each enemy removed by a player projectile, disposes of its sprite, and draws a health bar above each active enemy. `gameplayConfig.ts` defines maximum health for each enemy type and player projectile damage. Both enemy types have 2 health and player projectiles deal 1 damage by default. Development state attributes expose enemy health and score for deterministic E2E checks.
+
+## Match end and restart
+
+`MatchSession.ts` owns remaining active play time, player health, score, and the terminal reason. `PixiArena.ts` advances that state during active animation steps. Time expiry stops the step before movement or combat; lethal damage stops it before player attacks or further scoring. Ending clears input and prevents subsequent simulation updates. Pause does not advance the match clock.
+
+`BattleArena` passes the saved duration to Pixi and reports the terminal reason to `App`. `App` displays the end overlay and remounts `BattleArena` for a restart, giving the new match fresh Pixi resources, simulation state, and input. Development state attributes expose remaining time and player health for E2E checks.

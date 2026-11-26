@@ -1,32 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArenaInput, type ArenaCommand } from './arena/ArenaInput'
 import { PixiArena } from './arena/PixiArena'
+import type { MatchEndReason } from './arena/MatchSession'
 
 type LoadState = 'loading' | 'error' | 'ready'
 
 interface BattleArenaProps {
   active: boolean
   spawnIntervalSeconds: number
+  durationSeconds: number
   restorePauseFocus?: boolean
   onPause: () => void
+  onEnd: (reason: MatchEndReason) => void
 }
 
-export function BattleArena({ active, spawnIntervalSeconds, restorePauseFocus, onPause }: BattleArenaProps) {
+export function BattleArena({ active, spawnIntervalSeconds, durationSeconds, restorePauseFocus, onPause, onEnd }: BattleArenaProps) {
   const host = useRef<HTMLDivElement>(null)
   const pauseButton = useRef<HTMLButtonElement>(null)
   const mountedArena = useRef<PixiArena | null>(null)
+  const onEndRef = useRef(onEnd)
   const input = useRef<ArenaInput | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [loadState, setLoadState] = useState<LoadState>('loading')
 
   if (input.current === null) input.current = new ArenaInput()
 
+  useEffect(() => { onEndRef.current = onEnd }, [onEnd])
+
   useEffect(() => {
     const container = host.current
     const controls = input.current
     if (!container || !controls) return
 
-    const arena = new PixiArena(container, controls, spawnIntervalSeconds)
+    const arena = new PixiArena(container, controls, spawnIntervalSeconds, durationSeconds,
+      reason => onEndRef.current(reason))
     mountedArena.current = arena
     void arena.mount().then(
       () => { if (mountedArena.current === arena) setLoadState('ready') },
@@ -37,7 +44,7 @@ export function BattleArena({ active, spawnIntervalSeconds, restorePauseFocus, o
       mountedArena.current = null
       arena.destroy()
     }
-  }, [attempt, spawnIntervalSeconds])
+  }, [attempt, spawnIntervalSeconds, durationSeconds])
 
   useEffect(() => {
     mountedArena.current?.setActive(active && loadState === 'ready')

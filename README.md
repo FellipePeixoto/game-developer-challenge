@@ -63,6 +63,8 @@ The main menu lists the keyboard controls. Press **W** to move forward, **A** to
 
 Select **Pause** to suspend movement, projectiles, and reload timers. Select **Resume** to continue the current session or **Main Menu** to end it.
 
+The saved session time counts down only during active play. The match ends when it reaches zero or player health reaches zero; movement, attacks, damage, spawning, and scoring stop. Select **Restart** on the end screen to start with fresh time, health, score, and entities, or **Main Menu** to leave the match.
+
 ## Gameplay configuration
 
 Adjust player movement and turning speeds, weapon cooldowns, and projectile settings in [gameplayConfig.ts](src/arena/gameplayConfig.ts). Movement speed is expressed in pixels per second at the reference arena size. Turning speed is expressed in radians per second.
@@ -82,6 +84,8 @@ In development, open `/?enemy=chaser&seed=42` or `/?enemy=shooter&seed=1487` and
 The Shooter approaches at 80 reference pixels per second, stops within a 260-pixel attack range, and fires every 1.5 seconds while in range. Land blocks its movement. Each projectile travels at 240 reference pixels per second, lasts up to 3 seconds, and deals 1 damage once before removal. Land and arena boundaries also remove enemy projectiles. Player shots reduce a Shooter's 2 health; destroying it awards 1 point. Health bars appear above both enemy types. All Shooter values are set in the `shooter` section of `gameplayConfig.ts`. Pause suspends movement, shots, and cooldowns.
 
 Run the enemy spawning and player kill checks with `npx playwright test tests/enemy-spawning.spec.ts --project=desktop-chromium --reporter=line`.
+
+Run the match end and restart checks with `npx playwright test tests/match-end.spec.ts --project=desktop-chromium --reporter=line`.
 
 Run the Shooter checks with `npx playwright test tests/shooter.spec.ts --project=desktop-chromium --reporter=line`.
 

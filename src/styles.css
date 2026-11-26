@@ -75,6 +75,9 @@ button:disabled { cursor: default; opacity: .55; }
   text-align: center;
 }
 
+.match-end { gap: 2cqh; }
+.match-end .art-button { width: min(100%, 17cqw); }
+
 .overlay-panel:is(.main-menu, .captain-log) {
   --screen-margin: 3cqh;
   max-height: calc(100% - 2 * var(--screen-margin));

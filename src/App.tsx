@@ -8,16 +8,19 @@ import { OptionsScreen } from './OptionsScreen'
 import { PauseScreen } from './PauseScreen'
 import { loadSessionOptions } from './sessionOptions'
 import type { SessionOptions } from './sessionOptions'
+import type { MatchEndReason } from './arena/MatchSession'
 
 type Screen =
   | { name: 'menu'; restoreFocus?: MenuAction }
   | { name: 'options' | 'ranking' | 'history' }
   | { name: 'play'; settings: SessionOptions; restorePauseFocus?: boolean }
   | { name: 'pause' | 'pause-options'; settings: SessionOptions }
+  | { name: 'end'; settings: SessionOptions; reason: MatchEndReason }
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'menu' })
-  const inBattle = screen.name === 'play' || screen.name === 'pause' || screen.name === 'pause-options'
+  const [matchNumber, setMatchNumber] = useState(0)
+  const inBattle = screen.name === 'play' || screen.name === 'pause' || screen.name === 'pause-options' || screen.name === 'end'
 
   function openScreen(name: MenuAction) {
     if (name === 'play') setScreen({ name, settings: loadSessionOptions() })
@@ -28,10 +31,13 @@ export function App() {
     <main className="game-shell">
       {inBattle && (
         <BattleArena
+          key={matchNumber}
           active={screen.name === 'play'}
           spawnIntervalSeconds={screen.settings.spawnIntervalSeconds}
+          durationSeconds={screen.settings.durationSeconds}
           restorePauseFocus={screen.name === 'play' && screen.restorePauseFocus}
           onPause={() => setScreen({ name: 'pause', settings: screen.settings })}
+          onEnd={reason => setScreen({ name: 'end', settings: screen.settings, reason })}
         />
       )}
       {screen.name !== 'play' && (
@@ -56,6 +62,16 @@ export function App() {
       )}
       {screen.name === 'pause-options' && (
         <OptionsScreen closeLabel="Back to Pause" onClose={() => setScreen({ name: 'pause', settings: screen.settings })} />
+      )}
+      {screen.name === 'end' && (
+        <section className="overlay-panel match-end" aria-labelledby="match-end-title">
+          <h1 id="match-end-title">{screen.reason === 'time' ? 'Time up' : 'Ship sunk'}</h1>
+          <button type="button" className="art-button" onClick={() => {
+            setMatchNumber(number => number + 1)
+            setScreen({ name: 'play', settings: screen.settings })
+          }}>Restart</button>
+          <button type="button" className="art-button" onClick={() => setScreen({ name: 'menu', restoreFocus: 'play' })}>Main Menu</button>
+        </section>
       )}
     </main>
   )
