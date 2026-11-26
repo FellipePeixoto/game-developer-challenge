@@ -46,4 +46,10 @@ The debugger is dynamically imported and instantiated only inside `import.meta.e
 
 Each arena instance owns an independent 32-bit pseudorandom sequence. `SimulationRandom.ts` initializes the sequence from browser-generated entropy or, in development, from the `seed` URL parameter. The sequence starts fresh with each new arena.
 
-`Chaser.ts` samples positions within the arena and checks the entire starting ship rectangle against the land obstacles and arena bounds. It also enforces the configured minimum center-to-center distance from the player. If random sampling finds no safe position, it checks the four outermost valid centers. `PixiArena.ts` loads and positions the enemy sprite and scales its position when the arena resizes.
+`Chaser.ts` samples positions within the arena and checks the entire starting ship rectangle against the land obstacles and arena bounds. It also enforces the configured minimum center-to-center distance from the player. If random sampling finds no safe position, it checks the four outermost valid centers.
+
+## Chaser pursuit and impact
+
+`Chaser.ts` owns pursuit, the collider and the transition from impact through explosion to removal. During each active simulation step, `PixiArena.ts` updates the player before advancing the Chaser. The Chaser turns toward the player's current position and attempts to move along that heading. `Physics.ts` checks that the rotated collider fits inside the arena and clears every land tile before accepting the move. The Chaser holds its position when the direct path is blocked. Ship-to-ship contact uses the same separating axis test with both colliders rotated.
+
+An overlap with the player triggers impact once and disables the Chaser's movement and collisions. `PixiArena.ts` subtracts the configured damage and leaves the score unchanged. It replaces the ship sprite with an explosion sprite that fades over the configured duration, then hides the effect. Pause holds the explosion at its current opacity. Resizing scales the Chaser's position and hull with the arena and preserves its lifecycle state. The default values in `gameplayConfig.ts` are 100 reference pixels per second, 1 point of impact damage, and a 0.4-second explosion. The player's maximum health is 3.

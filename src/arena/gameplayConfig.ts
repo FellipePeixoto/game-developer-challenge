@@ -1,5 +1,6 @@
 export const gameplayConfig = {
   player: {
+    maxHealth: 3,
     // pixels/sec
     movementSpeed: 80,
     // radianos/sec
@@ -7,6 +8,9 @@ export const gameplayConfig = {
   },
   chaser: {
     minimumSpawnDistance: 160,
+    movementSpeed: 100,
+    impactDamage: 1,
+    explosionSeconds: 0.4,
   },
   weapons: {
     Space: { cooldownSeconds: 0.35 },

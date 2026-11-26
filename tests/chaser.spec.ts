@@ -1,10 +1,27 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+
+const startTime = new Date('2026-01-01T00:00:00Z')
 
 interface Spawn {
   x: number
   y: number
   width: number
   height: number
+}
+
+interface ChaserState {
+  phase: 'pursuing' | 'exploding' | 'removed'
+  x: number
+  y: number
+  rotation: number
+  playerHealth: number
+  score: number
+}
+
+async function chaserState(arena: Locator): Promise<ChaserState> {
+  const state = await arena.getAttribute('data-chaser-state')
+  expect(state, 'The arena exposes the Chaser state in development').not.toBeNull()
+  return JSON.parse(state!) as ChaserState
 }
 
 async function openBattle(page: Page, seed: number) {
@@ -22,7 +39,58 @@ async function openBattle(page: Page, seed: number) {
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 })
-  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') })
+  await page.clock.install({ time: startTime })
+})
+
+test('turns toward the moving player, deals one damage on impact and explodes without scoring', async ({ page }) => {
+  const { arena } = await openBattle(page, 1487)
+  await page.clock.pauseAt(startTime.getTime() + 60_000)
+  const initial = await chaserState(arena)
+  expect(initial.phase).toBe('pursuing')
+
+  await page.keyboard.down('KeyW')
+  await page.clock.runFor(600)
+  await page.keyboard.up('KeyW')
+  const pursuit = await chaserState(arena)
+  const playerX = Number(await arena.getAttribute('data-ship-x'))
+  const playerY = Number(await arena.getAttribute('data-ship-y'))
+  expect(Math.hypot(pursuit.x - playerX, pursuit.y - playerY))
+    .toBeLessThan(Math.hypot(initial.x - playerX, initial.y - playerY))
+  expect(pursuit.rotation).not.toBeCloseTo(initial.rotation, 2)
+  expect(pursuit.playerHealth).toBe(initial.playerHealth)
+  expect(pursuit.score).toBe(0)
+
+  let impact = pursuit
+  for (let elapsed = 0; elapsed < 5000 && impact.phase === 'pursuing'; elapsed += 100) {
+    await page.clock.runFor(100)
+    impact = await chaserState(arena)
+  }
+  expect(impact.phase).toBe('exploding')
+  expect(impact.playerHealth).toBe(initial.playerHealth - 1)
+  expect(impact.score).toBe(0)
+
+  await page.clock.runFor(1500)
+  const afterExplosion = await chaserState(arena)
+  expect(afterExplosion.phase).toBe('removed')
+  expect(afterExplosion.playerHealth).toBe(impact.playerHealth)
+  expect(afterExplosion.score).toBe(0)
+})
+
+test('stops at the island while pursuing the player', async ({ page }) => {
+  const { arena, spawn } = await openBattle(page, 7)
+  await page.clock.pauseAt(startTime.getTime() + 60_000)
+  const initial = await chaserState(arena)
+
+  await page.clock.runFor(2500)
+  const stopped = await chaserState(arena)
+  expect(Math.hypot(stopped.x - spawn.x, stopped.y - spawn.y)).toBeGreaterThan(5)
+
+  await page.clock.runFor(1000)
+  const stillBlocked = await chaserState(arena)
+  expect(stillBlocked.phase).toBe('pursuing')
+  expect(stillBlocked.x).toBeCloseTo(stopped.x, 2)
+  expect(stillBlocked.y).toBeCloseTo(stopped.y, 2)
+  expect(stillBlocked.playerHealth).toBe(initial.playerHealth)
 })
 
 test('reproduces the Chaser spawn with the same simulation seed', async ({ page }) => {

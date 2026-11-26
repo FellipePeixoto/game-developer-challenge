@@ -73,6 +73,8 @@ Movement and collision tests calculate control durations from the configured shi
 
 The Chaser starts at least 160 reference pixels from the player, measured center to center. Adjust the minimum in `gameplayConfig.ts`. To reproduce a spawn in development, open `/?seed=42` and select **Play**. The same seed and arena dimensions reproduce the same initial position. Supported seeds are integers from 0 to 4294967295.
 
+The Chaser pursues the player at 100 reference pixels per second and stops when land blocks its path. The player starts with 3 health. A Chaser impact costs 1 health, leaves the score unchanged, and removes the Chaser after a 0.4-second explosion. These values are set in `gameplayConfig.ts`.
+
 ## Options
 
 The **−** and **+** buttons change each option by one second. **Main Menu** saves both values to the browser's local storage. From the pause screen, **Back to Pause** saves the values and returns to the paused session. The values are captured when **Play** is selected, so later changes apply to new matches only. Invalid saved data or unavailable storage falls back to the defaults.

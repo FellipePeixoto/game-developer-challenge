@@ -1,10 +1,11 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js'
 import shipUrl from '../../assets/png/retina/ships/ship_1.png'
 import chaserUrl from '../../assets/png/retina/ships/ship_2.png'
+import explosionUrl from '../../assets/png/retina/effects/explosion_1.png'
 import terrainUrl from '../../assets/tilesheet/tiles_sheet_retina.png'
 import { arenaMap, isLandTile, mapColumns, mapLeft, mapObstacles, mapRows, oceanTile, submergedTile, tileSize } from './ArenaMap'
 import { ArenaInput } from './ArenaInput'
-import { findChaserSpawn } from './Chaser'
+import { Chaser, findChaserSpawn } from './Chaser'
 import { createSimulationRandom, readSimulationSeed } from './SimulationRandom'
 import { ShipController } from './ShipController'
 import { Physics } from './Physics'
@@ -26,6 +27,10 @@ export class PixiArena {
   private lastTime = 0
   private ship?: Sprite
   private chaser?: Sprite
+  private explosion?: Sprite
+  private readonly chaserSimulation = new Chaser()
+  private playerHealth: number = gameplayConfig.player.maxHealth
+  private readonly score = 0
   private terrain?: Container
   private readonly tileTextures = new Map<number, Texture>()
   private controller?: ShipController
@@ -43,9 +48,10 @@ export class PixiArena {
   ) {}
 
   async mount(): Promise<void> {
-    const [shipTexture, chaserTexture, tiles] = await Promise.all([
+    const [shipTexture, chaserTexture, explosionTexture, tiles] = await Promise.all([
       Assets.load<Texture>(shipUrl),
       Assets.load<Texture>(chaserUrl),
+      Assets.load<Texture>(explosionUrl),
       Assets.load<Texture>(terrainUrl),
     ])
     if (this.destroyed) return
@@ -74,6 +80,10 @@ export class PixiArena {
     this.chaser.anchor.set(0.5)
     this.chaser.visible = false
     app.stage.addChild(this.chaser)
+    this.explosion = new Sprite(explosionTexture)
+    this.explosion.anchor.set(0.5)
+    this.explosion.visible = false
+    app.stage.addChild(this.explosion)
     this.controller = new ShipController(this.ship, this.input, this.physics)
     this.projectileGraphics = new Graphics()
     app.stage.addChild(this.projectileGraphics)
@@ -111,11 +121,13 @@ export class PixiArena {
     this.app = undefined
     this.ship = undefined
     this.chaser = undefined
+    this.explosion = undefined
     this.terrain = undefined
     this.controller = undefined
     this.projectileGraphics = undefined
     delete this.element.dataset.projectiles
     delete this.element.dataset.chaserSpawn
+    delete this.element.dataset.chaserState
   }
 
   private readonly tick = (now: number): void => {
@@ -125,6 +137,9 @@ export class PixiArena {
     if (this.active) {
       this.controller.update(deltaSeconds)
       const scale = this.ship.scale.x
+      if (this.chaserSimulation.update(deltaSeconds, scale, this.ship.position, this.physics)) {
+        this.playerHealth = Math.max(0, this.playerHealth - gameplayConfig.chaser.impactDamage)
+      }
       const radius = gameplayConfig.projectile.radius * scale
       this.weapons.advance(deltaSeconds, scale, (start, end) => this.physics.blocksProjectile(start, end, radius))
       const { ship, shipRotation } = this.physics
@@ -134,6 +149,7 @@ export class PixiArena {
         }
       }
       this.drawProjectiles()
+      this.drawChaser()
       this.debugger?.draw(this.physics)
       this.publishPosition()
     }
@@ -177,17 +193,14 @@ export class PixiArena {
   }
 
   private resize(): void {
-    const { app, ship, terrain, chaser } = this
-    if (!app || !ship || !terrain || !chaser) return
+    const { app, ship, terrain, chaser, explosion, chaserSimulation } = this
+    if (!app || !ship || !terrain || !chaser || !explosion) return
 
     const width = this.width
     const height = this.height
     const { width: previousWidth, height: previousHeight } = this.physics.bounds
     if (previousWidth > 0 && previousHeight > 0) {
       this.weapons.resize(width / previousWidth, height / previousHeight)
-      if (chaser.visible) {
-        chaser.position.set(chaser.x * width / previousWidth, chaser.y * height / previousHeight)
-      }
     }
     app.renderer.resize(width, height, window.devicePixelRatio)
     terrain.scale.set(width / mapColumns, height / mapRows)
@@ -202,8 +215,19 @@ export class PixiArena {
     const { obstacles } = this.physics
     obstacles.splice(0, obstacles.length, ...mapObstacles(width, height))
     chaser.scale.set(ship.scale.x)
-    if (!chaser.visible) this.spawnChaser(chaser, ship)
+    explosion.scale.set(ship.scale.x)
+    if (chaserSimulation.phase === 'waiting') {
+      this.spawnChaser(chaser, ship)
+    } else {
+      chaserSimulation.setHull(
+        chaserSimulation.x * width / previousWidth,
+        chaserSimulation.y * height / previousHeight,
+        chaser.width * SHIP_COLLIDER_WIDTH_FACTOR,
+        chaser.height * SHIP_COLLIDER_HEIGHT_FACTOR,
+      )
+    }
     this.drawProjectiles()
+    this.drawChaser()
     this.debugger?.draw(this.physics)
     this.publishPosition()
     this.element.dataset.shipScale = String(ship.scale.x)
@@ -224,10 +248,27 @@ export class PixiArena {
 
     const x = spawn.x + spawn.width / 2
     const y = spawn.y + spawn.height / 2
-    chaser.position.set(x, y)
-    chaser.visible = true
+    this.chaserSimulation.setHull(x, y, spawn.width * SHIP_COLLIDER_WIDTH_FACTOR, spawn.height * SHIP_COLLIDER_HEIGHT_FACTOR)
+    this.chaserSimulation.startPursuit()
     if (import.meta.env.DEV) {
       this.element.dataset.chaserSpawn = JSON.stringify({ x, y, width: spawn.width, height: spawn.height })
+    }
+  }
+
+  private drawChaser(): void {
+    const { chaser, explosion, chaserSimulation } = this
+    if (!chaser || !explosion) return
+    const { phase, x, y, rotation, explosionOpacity } = chaserSimulation
+    chaser.visible = phase === 'pursuing'
+    chaser.position.set(x, y)
+    chaser.rotation = rotation
+    explosion.visible = phase === 'exploding'
+    explosion.position.set(x, y)
+    explosion.alpha = explosionOpacity
+    if (import.meta.env.DEV) {
+      this.element.dataset.chaserState = JSON.stringify({
+        phase, x, y, rotation, playerHealth: this.playerHealth, score: this.score,
+      })
     }
   }
 

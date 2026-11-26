@@ -44,6 +44,21 @@ export class Physics {
     return true
   }
 
+  canPlace(box: Rectangle, rotation: number, x: number, y: number): boolean {
+    const cosine = Math.abs(Math.cos(rotation))
+    const sine = Math.abs(Math.sin(rotation))
+    const extentX = (cosine * box.width + sine * box.height) / 2
+    const extentY = (sine * box.width + cosine * box.height) / 2
+    const { bounds } = this
+    return x - extentX >= bounds.left && x + extentX <= bounds.right
+      && y - extentY >= bounds.top && y + extentY <= bounds.bottom
+      && !this.obstacles.some(obstacle => this.contact(box, rotation, x, y, obstacle))
+  }
+
+  overlapsShip(box: Rectangle, rotation: number, x: number, y: number): boolean {
+    return this.contact(box, rotation, x, y, this.ship, this.shipRotation) !== undefined
+  }
+
   blocksProjectile(start: { x: number; y: number }, end: { x: number; y: number }, radius: number): boolean {
     if (!this.bounds.contains(end.x, end.y)) return true
 
@@ -101,9 +116,13 @@ export class Physics {
     return true
   }
 
-  private contact(box: Rectangle, rotation: number, x: number, y: number, obstacle: Rectangle): { x: number; y: number } | undefined {
+  private contact(
+    box: Rectangle, rotation: number, x: number, y: number, obstacle: Rectangle, obstacleRotation = 0,
+  ): { x: number; y: number } | undefined {
     const cosine = Math.cos(rotation)
     const sine = Math.sin(rotation)
+    const obstacleCosine = Math.cos(obstacleRotation)
+    const obstacleSine = Math.sin(obstacleRotation)
     const obstacleHalfWidth = obstacle.width / 2
     const obstacleHalfHeight = obstacle.height / 2
     const offsetX = x - (obstacle.x + obstacleHalfWidth)
@@ -112,11 +131,14 @@ export class Physics {
     let normalX = 0
     let normalY = 0
 
-    // Test both axes of the axis-aligned obstacle and both axes of the rotated ship.
-    for (const [axisX, axisY] of [[1, 0], [0, 1], [cosine, sine], [-sine, cosine]]) {
+    // Test the separating axes of both rectangles.
+    for (const [axisX, axisY] of [
+      [obstacleCosine, obstacleSine], [-obstacleSine, obstacleCosine], [cosine, sine], [-sine, cosine],
+    ]) {
       const shipExtent = Math.abs(axisX * cosine + axisY * sine) * box.width / 2
         + Math.abs(-axisX * sine + axisY * cosine) * box.height / 2
-      const obstacleExtent = Math.abs(axisX) * obstacleHalfWidth + Math.abs(axisY) * obstacleHalfHeight
+      const obstacleExtent = Math.abs(axisX * obstacleCosine + axisY * obstacleSine) * obstacleHalfWidth
+        + Math.abs(-axisX * obstacleSine + axisY * obstacleCosine) * obstacleHalfHeight
       const distance = offsetX * axisX + offsetY * axisY
       const overlap = shipExtent + obstacleExtent - Math.abs(distance)
       if (overlap <= 0) return
