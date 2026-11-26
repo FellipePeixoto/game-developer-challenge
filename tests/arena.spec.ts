@@ -19,6 +19,8 @@ test('keeps a 16:9 game frame and rotates it in mobile portrait', async ({ page,
   await expect.poll(() => shell.boundingBox()).toEqual(initialSize.bounds)
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect(canvas).toBeVisible()
+  const pixelRatio = await page.evaluate(() => window.devicePixelRatio)
+  if (isMobile) expect(pixelRatio).toBeGreaterThan(1)
 
   for (const { viewport, bounds } of sizes) {
     await page.setViewportSize(viewport)
@@ -26,9 +28,13 @@ test('keeps a 16:9 game frame and rotates it in mobile portrait', async ({ page,
     await expect.poll(() => arena.boundingBox()).toEqual(bounds)
     await expect.poll(() => canvas.boundingBox()).toEqual(bounds)
 
+    const rotated = isMobile && viewport.height > viewport.width
+    const width = rotated ? bounds.height : bounds.width
+    const height = rotated ? bounds.width : bounds.height
+    await expect(canvas).toHaveAttribute('width', String(Math.round(width * pixelRatio)))
+    await expect(canvas).toHaveAttribute('height', String(Math.round(height * pixelRatio)))
+
     if (isMobile) {
-      await expect(canvas).toHaveAttribute('width', '768')
-      await expect(canvas).toHaveAttribute('height', '432')
       await page.getByRole('button', { name: 'Pause', exact: true }).tap()
       await expect(page.getByRole('heading', { name: 'Paused' })).toBeVisible()
       await page.getByRole('button', { name: 'Resume' }).tap()

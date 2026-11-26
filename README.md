@@ -51,7 +51,7 @@ Playwright runs in Chromium with desktop and emulated mobile profiles. The HTML 
 
 ## Display
 
-The game frame stays centered at a 16:9 aspect ratio and scales to fit the browser viewport up to 1920 × 1080 CSS pixels. The PixiJS canvas fills the arena inside the frame.
+The game frame stays centered at a 16:9 aspect ratio and scales to fit the browser viewport up to 1920 × 1080 CSS pixels. The PixiJS canvas fills the arena and renders at the device pixel ratio. Arena dimensions and input coordinates use CSS pixels.
 
 On touch devices in portrait, the entire game frame rotates 90° to use the long side of the viewport as its width. In landscape, the game frame follows the viewport orientation.
 

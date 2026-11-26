@@ -42,6 +42,7 @@ export class PixiArena {
     await app.init({
       width: this.width,
       height: this.height,
+      resolution: window.devicePixelRatio,
       background: WATER_COLOR,
     })
 
@@ -131,7 +132,7 @@ export class PixiArena {
     if (previousBounds.width > 0 && previousBounds.height > 0) {
       this.weapons.resize(width / previousBounds.width, height / previousBounds.height)
     }
-    app.renderer.resize(width, height)
+    app.renderer.resize(width, height, window.devicePixelRatio)
     water.clear().rect(0, 0, width, height).fill(WATER_COLOR)
     ship.position.set(width / 2, height / 2)
     ship.scale.set(Math.min(width / 960, height / 540))
