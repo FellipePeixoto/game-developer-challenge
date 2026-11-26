@@ -23,7 +23,7 @@ interface EnemyView {
   layer: Container
   shipTexture: Texture
   explosionTexture: Texture
-  sprites: Map<Enemy, { ship: Sprite; explosion?: Sprite }>
+  sprites: Map<Enemy, { ship: Sprite; health: Graphics; explosion?: Sprite }>
 }
 
 export class PixiArena {
@@ -38,7 +38,7 @@ export class PixiArena {
   private enemyView?: EnemyView
   private readonly enemyWeapons = new EnemyProjectiles()
   private playerHealth: number = gameplayConfig.player.maxHealth
-  private readonly score = 0
+  private score = 0
   private terrain?: Container
   private readonly tileTextures = new Map<number, Texture>()
   private controller?: ShipController
@@ -133,6 +133,7 @@ export class PixiArena {
     this.projectileGraphics = undefined
     delete this.element.dataset.projectiles
     delete this.element.dataset.enemies
+    delete this.element.dataset.score
     delete this.element.dataset.chaserSpawn
     delete this.element.dataset.chaserState
     delete this.element.dataset.shooterState
@@ -149,7 +150,12 @@ export class PixiArena {
       const enemyDamage = this.enemyWeapons.advance(deltaSeconds, scale, this.physics)
       this.playerHealth = Math.max(0, this.playerHealth - impactDamage - enemyDamage)
       const radius = gameplayConfig.projectile.radius * scale
-      this.weapons.advance(deltaSeconds, scale, (start, end) => this.physics.blocksProjectile(start, end, radius))
+      this.weapons.advance(deltaSeconds, scale, (start, end) => {
+        if (this.physics.blocksProjectile(start, end, radius)) return true
+        const result = this.fleet!.hitProjectile(start, end, radius, scale, this.physics)
+        if (result === 'kill') this.score += 1
+        return result !== 'miss'
+      })
       const { ship, shipRotation } = this.physics
       for (const { code } of ArenaInput.fireCommands) {
         if (this.input.isFiring(code)) {
@@ -247,6 +253,7 @@ export class PixiArena {
     for (const [enemy, visual] of sprites) {
       if (fleet.enemies.has(enemy)) continue
       visual.ship.destroy()
+      visual.health.destroy()
       visual.explosion?.destroy()
       sprites.delete(enemy)
     }
@@ -257,8 +264,9 @@ export class PixiArena {
         const ship = new Sprite(shipTexture)
         ship.anchor.set(0.5)
         if (enemy.type === 'shooter') ship.tint = 0xffb85c
-        layer.addChild(ship)
-        visual = { ship }
+        const health = new Graphics()
+        layer.addChild(ship, health)
+        visual = { ship, health }
         if (enemy.type === 'chaser') {
           const explosion = new Sprite(explosionTexture)
           explosion.anchor.set(0.5)
@@ -272,6 +280,15 @@ export class PixiArena {
       visual.ship.position.set(x, y)
       visual.ship.rotation = rotation
       visual.ship.scale.set(player.scale.x)
+      const maxHealth = gameplayConfig[enemy.type].maxHealth
+      const barWidth = 38 * player.scale.x
+      const barHeight = 5 * player.scale.x
+      visual.health.clear()
+      visual.health.rect(0, 0, barWidth, barHeight).fill('#9f302b')
+      visual.health.rect(0, 0, barWidth * enemy.health / maxHealth, barHeight).fill('#63c766')
+      visual.health.rect(0, 0, barWidth, barHeight).stroke({ color: '#18212c', width: Math.max(1, player.scale.x) })
+      visual.health.position.set(x - barWidth / 2, y - shipTexture.height * player.scale.x / 2 - 12 * player.scale.x)
+      visual.health.visible = enemy.type === 'shooter' || enemy.ship.phase === 'pursuing'
       if (enemy.type === 'chaser' && visual.explosion) {
         visual.ship.visible = enemy.ship.phase === 'pursuing'
         visual.explosion.visible = enemy.ship.phase === 'exploding'
@@ -284,8 +301,9 @@ export class PixiArena {
   }
 
   private publishEnemyState(fleet: EnemyFleet): void {
+    this.element.dataset.score = String(this.score)
+    this.element.dataset.enemies = JSON.stringify(Array.from(fleet.enemies, ({ type, health }) => ({ type, health })))
     if (!fleet.scenario) {
-      this.element.dataset.enemies = JSON.stringify(Array.from(fleet.enemies, ({ type }) => ({ type })))
       return
     }
     const enemy = fleet.enemies.values().next().value
@@ -293,13 +311,14 @@ export class PixiArena {
     const { x, y, rotation } = enemy.ship
     if (enemy.type === 'shooter') {
       this.element.dataset.shooterState = JSON.stringify({
-        x, y, rotation,
+        x, y, rotation, health: enemy.health, score: this.score,
         playerHealth: this.playerHealth,
         projectiles: this.enemyWeapons.projectiles.map(({ id, x, y }) => ({ id, x, y })),
       })
     } else {
       this.element.dataset.chaserState = JSON.stringify({
-        phase: enemy.ship.phase, x, y, rotation, playerHealth: this.playerHealth, score: this.score,
+        phase: enemy.ship.phase, x, y, rotation, health: enemy.health,
+        playerHealth: this.playerHealth, score: this.score,
       })
     }
   }

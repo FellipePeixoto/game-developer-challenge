@@ -59,3 +59,9 @@ An overlap with the player triggers impact once and disables the Chaser's moveme
 ## Shooter responsibilities
 
 `Shooter.ts` owns the hull, approach, rotation, attack range, and firing cooldown. `EnemyProjectiles.ts` owns enemy projectile trajectories, lifetime, and removal, and returns damage from each simulation step. This separation keeps movement and weapon changes isolated. `Physics.ts` owns collision detection. `PixiArena.ts` advances these modules, applies damage, and renders the ship and projectiles. `gameplayConfig.ts` holds the Shooter parameters. The development scenario selects the Shooter through the `enemy=shooter` URL parameter.
+
+## Enemy health and player kills
+
+`EnemyFleet.ts` owns each enemy's remaining health and removes a ship when a player projectile reduces it to zero. `Physics.ts` calculates projectile contact with rotated enemy hulls using the same geometry as player ship contact. `PlayerWeapons.ts` removes a projectile after its first contact; land and arena blocking take precedence within a simulation step. Chasers in the impact explosion phase cannot take projectile damage. A Chaser destroyed by impact awards no point.
+
+`PixiArena.ts` awards one point for each enemy removed by a player projectile, disposes of its sprite, and draws a health bar above each active enemy. `gameplayConfig.ts` defines maximum health for each enemy type and player projectile damage. Both enemy types have 2 health and player projectiles deal 1 damage by default. Development state attributes expose enemy health and score for deterministic E2E checks.

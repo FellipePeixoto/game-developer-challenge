@@ -10,12 +10,14 @@ export const gameplayConfig = {
     turningSpeed: 0.75,
   },
   chaser: {
+    maxHealth: 2,
     minimumSpawnDistance: 160,
     movementSpeed: 100,
     impactDamage: 1,
     explosionSeconds: 0.4,
   },
   shooter: {
+    maxHealth: 2,
     minimumSpawnDistance: 160,
     movementSpeed: 80,
     attackRange: 260,
@@ -31,6 +33,7 @@ export const gameplayConfig = {
     KeyE: { cooldownSeconds: 0.6 },
   },
   projectile: {
+    damage: 1,
     // pixels/sec
     speed: 560,
     lifetimeSeconds: 1,

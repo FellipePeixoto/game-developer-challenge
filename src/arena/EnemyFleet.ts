@@ -6,7 +6,7 @@ import type { Physics } from './Physics'
 import { Shooter } from './Shooter'
 
 type EnemyType = 'chaser' | 'shooter'
-export type Enemy = { type: 'chaser'; ship: Chaser } | { type: 'shooter'; ship: Shooter }
+export type Enemy = ({ type: 'chaser'; ship: Chaser } | { type: 'shooter'; ship: Shooter }) & { health: number }
 
 const ENEMY_COLLIDER_SCALE = 0.7
 
@@ -23,6 +23,28 @@ export class EnemyFleet {
   ) {}
 
   get enemies(): ReadonlySet<Enemy> { return this.ships }
+
+  hitProjectile(start: PointData, end: PointData, radius: number, scale: number,
+    physics: Physics): 'miss' | 'hit' | 'kill' {
+    let target: Enemy | undefined
+    let earliest = Infinity
+    const width = this.textureWidth * scale * ENEMY_COLLIDER_SCALE
+    const height = this.textureHeight * scale * ENEMY_COLLIDER_SCALE
+    for (const enemy of this.ships) {
+      if (enemy.type === 'chaser' && enemy.ship.phase !== 'pursuing') continue
+      const { x, y, rotation } = enemy.ship
+      const hull = new Rectangle(x - width / 2, y - height / 2, width, height)
+      const contact = physics.projectileHullContact(start, end, radius, hull, rotation)
+      if (contact === undefined || contact >= earliest) continue
+      target = enemy
+      earliest = contact
+    }
+    if (!target) return 'miss'
+    target.health = Math.max(0, target.health - gameplayConfig.projectile.damage)
+    if (target.health > 0) return 'hit'
+    this.ships.delete(target)
+    return 'kill'
+  }
 
   spawnScenario(physics: Physics, player: PointData, scale: number): Rectangle | undefined {
     if (this.scenario && this.ships.size === 0) {
@@ -67,7 +89,9 @@ export class EnemyFleet {
       gameplayConfig[type].minimumSpawnDistance * scale, this.random)
     if (!spawn) return
 
-    const enemy: Enemy = type === 'chaser' ? { type, ship: new Chaser() } : { type, ship: new Shooter() }
+    const enemy: Enemy = type === 'chaser'
+      ? { type, ship: new Chaser(), health: gameplayConfig.chaser.maxHealth }
+      : { type, ship: new Shooter(), health: gameplayConfig.shooter.maxHealth }
     enemy.ship.setHull(spawn.x + width / 2, spawn.y + height / 2,
       width * ENEMY_COLLIDER_SCALE, height * ENEMY_COLLIDER_SCALE)
     if (enemy.type === 'chaser') enemy.ship.startPursuit()

@@ -85,16 +85,21 @@ export class Physics {
   }
 
   projectileShipContact(start: { x: number; y: number }, end: { x: number; y: number }, radius: number): number | undefined {
-    const cosine = Math.cos(this.shipRotation)
-    const sine = Math.sin(this.shipRotation)
-    const centerX = this.ship.x + this.ship.width / 2
-    const centerY = this.ship.y + this.ship.height / 2
+    return this.projectileHullContact(start, end, radius, this.ship, this.shipRotation)
+  }
+
+  projectileHullContact(start: { x: number; y: number }, end: { x: number; y: number },
+    radius: number, hull: Rectangle, rotation: number): number | undefined {
+    const cosine = Math.cos(rotation)
+    const sine = Math.sin(rotation)
+    const centerX = hull.x + hull.width / 2
+    const centerY = hull.y + hull.height / 2
     const x = (start.x - centerX) * cosine + (start.y - centerY) * sine
     const y = -(start.x - centerX) * sine + (start.y - centerY) * cosine
     const dx = (end.x - start.x) * cosine + (end.y - start.y) * sine
     const dy = -(end.x - start.x) * sine + (end.y - start.y) * cosine
-    const halfWidth = this.ship.width / 2
-    const halfHeight = this.ship.height / 2
+    const halfWidth = hull.width / 2
+    const halfHeight = hull.height / 2
     if (Math.hypot(Math.max(0, Math.abs(x) - halfWidth), Math.max(0, Math.abs(y) - halfHeight)) <= radius) return 0
     const contacts: number[] = []
     for (const [position, direction, extent, other, otherDirection, otherExtent] of [
