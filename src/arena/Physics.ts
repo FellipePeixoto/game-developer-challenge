@@ -84,6 +84,46 @@ export class Physics {
     })
   }
 
+  projectileShipContact(start: { x: number; y: number }, end: { x: number; y: number }, radius: number): number | undefined {
+    const cosine = Math.cos(this.shipRotation)
+    const sine = Math.sin(this.shipRotation)
+    const centerX = this.ship.x + this.ship.width / 2
+    const centerY = this.ship.y + this.ship.height / 2
+    const x = (start.x - centerX) * cosine + (start.y - centerY) * sine
+    const y = -(start.x - centerX) * sine + (start.y - centerY) * cosine
+    const dx = (end.x - start.x) * cosine + (end.y - start.y) * sine
+    const dy = -(end.x - start.x) * sine + (end.y - start.y) * cosine
+    const halfWidth = this.ship.width / 2
+    const halfHeight = this.ship.height / 2
+    if (Math.hypot(Math.max(0, Math.abs(x) - halfWidth), Math.max(0, Math.abs(y) - halfHeight)) <= radius) return 0
+    const contacts: number[] = []
+    for (const [position, direction, extent, other, otherDirection, otherExtent] of [
+      [x, dx, halfWidth, y, dy, halfHeight],
+      [y, dy, halfHeight, x, dx, halfWidth],
+    ]) {
+      if (direction === 0) continue
+      for (const side of [-1, 1]) {
+        const fraction = (side * (extent + radius) - position) / direction
+        if (fraction >= 0 && fraction <= 1 && Math.abs(other + otherDirection * fraction) <= otherExtent) contacts.push(fraction)
+      }
+    }
+    const lengthSquared = dx * dx + dy * dy
+    if (lengthSquared > 0) {
+      for (const cornerX of [-halfWidth, halfWidth]) {
+        for (const cornerY of [-halfHeight, halfHeight]) {
+          const offsetX = x - cornerX
+          const offsetY = y - cornerY
+          const projection = offsetX * dx + offsetY * dy
+          const discriminant = projection ** 2 - lengthSquared * (offsetX ** 2 + offsetY ** 2 - radius ** 2)
+          if (discriminant < 0) continue
+          const fraction = (-projection - Math.sqrt(discriminant)) / lengthSquared
+          if (fraction >= 0 && fraction <= 1) contacts.push(fraction)
+        }
+      }
+    }
+    return contacts.length > 0 ? Math.min(...contacts) : undefined
+  }
+
   shipCorners(): number[] {
     const { ship, shipRotation } = this
     const centerX = ship.x + ship.width / 2

@@ -12,6 +12,16 @@ export const gameplayConfig = {
     impactDamage: 1,
     explosionSeconds: 0.4,
   },
+  shooter: {
+    minimumSpawnDistance: 160,
+    movementSpeed: 80,
+    attackRange: 260,
+    cooldownSeconds: 1.5,
+    projectileSpeed: 240,
+    projectileLifetimeSeconds: 3,
+    projectileDamage: 1,
+    projectileRadius: 3,
+  },
   weapons: {
     Space: { cooldownSeconds: 0.35 },
     KeyQ: { cooldownSeconds: 0.6 },
