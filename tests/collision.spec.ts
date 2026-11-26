@@ -28,21 +28,6 @@ async function corners(arena: Locator): Promise<number[]> {
   return JSON.parse(attribute!) as number[]
 }
 
-async function islandClearance(arena: Locator, x: number, y: number, radius: number) {
-  const points = await corners(arena)
-  const distances = []
-  for (let index = 0; index < 8; index += 2) {
-    const next = (index + 2) % 8
-    const dx = points[next] - points[index]
-    const dy = points[next + 1] - points[index + 1]
-    const fraction = Math.max(0, Math.min(1,
-      ((x - points[index]) * dx + (y - points[index + 1]) * dy) / (dx * dx + dy * dy),
-    ))
-    distances.push(Math.hypot(x - points[index] - fraction * dx, y - points[index + 1] - fraction * dy))
-  }
-  return Math.min(...distances) - radius
-}
-
 test.beforeEach(async ({ page }) => {
   const startTime = new Date('2026-01-01T00:00:00Z')
   await page.clock.install({ time: startTime })
@@ -84,28 +69,47 @@ for (const [edge, heading] of [['top', 0], ['right', Math.PI / 2], ['bottom', Ma
   })
 }
 
-test('slides along the island without penetration or moving the obstacle', async ({ page }) => {
+test('stops the ship at the square island corner and lets it sail around', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
-  await turn(page, 'KeyD', 1.344)
-  await move(page, 162)
-  const x = await value(arena, 'ship-x')
-  const y = await value(arena, 'ship-y')
-  const islandX = await value(arena, 'island-x')
-  const islandY = await value(arena, 'island-y')
-  const islandRadius = await value(arena, 'island-radius')
-  expect(x).toBeLessThan(islandX)
-  expect(await islandClearance(arena, islandX, islandY, islandRadius)).toBeGreaterThanOrEqual(-0.01)
-  expect(await islandClearance(arena, islandX, islandY, islandRadius)).toBeLessThan(4)
-  for (let step = 0; step < 5; step++) {
-    await move(page, 18)
-    expect(await islandClearance(arena, islandX, islandY, islandRadius)).toBeGreaterThanOrEqual(-0.01)
+  const scale = await value(arena, 'ship-scale')
+  const islandHalfSize = 48 * scale
+  const islandLeft = await value(arena, 'island-x') - islandHalfSize
+  const islandTop = await value(arena, 'island-y') - islandHalfSize
+
+  await move(page, 46)
+  await turn(page, 'KeyD', Math.PI / 2)
+  await move(page, 265)
+
+  const points = await corners(arena)
+  const bottom = Math.max(...points.filter((_, index) => index % 2 === 1))
+  expect(bottom).toBeGreaterThan(islandTop)
+  expect(bottom).toBeLessThan(islandTop + 2 * islandHalfSize)
+
+  // A rotated bow may extend past the left edge while it is above the island.
+  const hullAtIsland = []
+  for (let index = 0; index < points.length; index += 2) {
+    const next = (index + 2) % points.length
+    const x = points[index]
+    const y = points[index + 1]
+    const nextY = points[next + 1]
+    if (y >= islandTop) hullAtIsland.push(x)
+    if ((y < islandTop) === (nextY < islandTop)) continue
+
+    const fraction = (islandTop - y) / (nextY - y)
+    hullAtIsland.push(x + fraction * (points[next] - x))
   }
-  expect(await value(arena, 'ship-x')).toBeGreaterThan(x + 1)
-  expect(await value(arena, 'island-x')).toBe(islandX)
-  expect(await value(arena, 'island-y')).toBe(islandY)
-  await turn(page, 'KeyA', 1.344)
+  const right = Math.max(...hullAtIsland)
+  expect(right).toBeLessThanOrEqual(islandLeft + 0.01)
+  expect(right).toBeGreaterThan(islandLeft - 4)
+
+  await turn(page, 'KeyA', Math.PI / 2)
   await move(page, 90)
-  expect(await value(arena, 'ship-y')).toBeLessThan(y - 10)
+  await turn(page, 'KeyD', Math.PI / 2)
+  await move(page, 160)
+
+  const pastCorner = await corners(arena)
+  expect(Math.min(...pastCorner.filter((_, index) => index % 2 === 0))).toBeGreaterThan(islandLeft)
+  expect(Math.max(...pastCorner.filter((_, index) => index % 2 === 1))).toBeLessThan(islandTop)
 })
 
 test('shows collider outlines only in development and updates them with movement and resize', async ({ page }) => {

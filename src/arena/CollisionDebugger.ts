@@ -15,14 +15,14 @@ export class CollisionDebugger {
       .rect(bounds.x + 1, bounds.y + 1, Math.max(0, bounds.width - 2), Math.max(0, bounds.height - 2))
       .stroke({ color: 0xffff00, width: 2 })
     for (const obstacle of obstacles) {
-      this.graphics.circle(obstacle.x, obstacle.y, obstacle.radius)
+      this.graphics.rect(obstacle.x, obstacle.y, obstacle.width, obstacle.height)
         .stroke({ color: 0xff00ff, width: 2 })
     }
     this.graphics.poly(physics.shipCorners(), true).stroke({ color: 0x00ffff, width: 2 })
     this.element.dataset.debugColliders = JSON.stringify({
       bounds: [bounds.x, bounds.y, bounds.width, bounds.height],
       ship: [ship.x, ship.y, ship.width, ship.height, physics.shipRotation],
-      obstacles: obstacles.map(obstacle => [obstacle.x, obstacle.y, obstacle.radius]),
+      obstacles: obstacles.map(obstacle => [obstacle.x, obstacle.y, obstacle.width, obstacle.height]),
     })
   }
 

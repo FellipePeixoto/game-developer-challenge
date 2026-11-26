@@ -1,5 +1,6 @@
 import { Application, Assets, Graphics, Sprite, type Texture } from 'pixi.js'
 import shipUrl from '../../assets/png/retina/ships/ship_1.png'
+import islandUrl from '../../assets/png/retina/tiles/tile_9.png'
 import { ArenaInput } from './ArenaInput'
 import { ShipController } from './ShipController'
 import { Physics } from './Physics'
@@ -8,6 +9,7 @@ import { gameplayConfig } from './gameplayConfig'
 import type { CollisionDebugger } from './CollisionDebugger'
 
 const WATER_COLOR = '#147089'
+const ISLAND_SIDE = 96
 // Fractions of the scaled texture dimensions: decrease for a tighter collider.
 const SHIP_COLLIDER_WIDTH_FACTOR = 0.7
 const SHIP_COLLIDER_HEIGHT_FACTOR = 0.7
@@ -22,7 +24,7 @@ export class PixiArena {
   private ship?: Sprite
   private water?: Graphics
   private controller?: ShipController
-  private island?: Graphics
+  private island?: Sprite
   private projectileGraphics?: Graphics
   private readonly physics = new Physics()
   private readonly weapons = new PlayerWeapons()
@@ -34,7 +36,10 @@ export class PixiArena {
   ) {}
 
   async mount(): Promise<void> {
-    const texture = await Assets.load<Texture>(shipUrl)
+    const [shipTexture, islandTexture] = await Promise.all([
+      Assets.load<Texture>(shipUrl),
+      Assets.load<Texture>(islandUrl),
+    ])
     if (this.destroyed) return
 
     const app = new Application()
@@ -54,9 +59,9 @@ export class PixiArena {
 
     this.water = new Graphics()
     app.stage.addChild(this.water)
-    this.island = new Graphics()
+    this.island = new Sprite(islandTexture)
     app.stage.addChild(this.island)
-    this.ship = new Sprite(texture)
+    this.ship = new Sprite(shipTexture)
     this.ship.anchor.set(0.5)
     app.stage.addChild(this.ship)
     this.controller = new ShipController(this.ship, this.input, this.physics)
@@ -142,15 +147,20 @@ export class PixiArena {
     this.physics.ship.height = ship.height * SHIP_COLLIDER_HEIGHT_FACTOR
     this.physics.ship.x = ship.x - this.physics.ship.width / 2
     this.physics.ship.y = ship.y - this.physics.ship.height / 2
-    this.physics.island.x = width * 0.75
-    this.physics.island.y = height / 2
-    this.physics.island.radius = 48 * ship.scale.x
     const obstacle = this.physics.island
-    island.clear().circle(obstacle.x, obstacle.y, obstacle.radius).fill('#dfc481')
-      .circle(obstacle.x, obstacle.y, obstacle.radius * 0.8).fill('#518a3d')
-    this.element.dataset.islandX = String(obstacle.x)
-    this.element.dataset.islandY = String(obstacle.y)
-    this.element.dataset.islandRadius = String(obstacle.radius)
+    const side = ISLAND_SIDE * ship.scale.x
+    const centerX = width * 0.75
+    const centerY = height / 2
+    obstacle.x = centerX - side / 2
+    obstacle.y = centerY - side / 2
+    obstacle.width = side
+    obstacle.height = side
+    water.rect(obstacle.x, obstacle.y, obstacle.width, obstacle.height).fill('#dfc481')
+    island.position.set(obstacle.x, obstacle.y)
+    island.width = obstacle.width
+    island.height = obstacle.height
+    this.element.dataset.islandX = String(centerX)
+    this.element.dataset.islandY = String(centerY)
     this.drawProjectiles()
     this.debugger?.draw(this.physics)
     this.publishPosition()

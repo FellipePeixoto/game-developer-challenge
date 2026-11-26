@@ -1,11 +1,11 @@
-import { Circle, Rectangle } from 'pixi.js'
+import { Rectangle } from 'pixi.js'
 
 export class Physics {
   readonly bounds = new Rectangle()
-  readonly island = new Circle()
+  readonly island = new Rectangle()
   readonly ship = new Rectangle()
   shipRotation = 0
-  readonly obstacles: Circle[] = [this.island]
+  readonly obstacles: Rectangle[] = [this.island]
 
   move(collider: Rectangle, deltaX: number, deltaY: number, rotation = this.shipRotation): boolean {
     const { bounds } = this
@@ -51,14 +51,22 @@ export class Physics {
     const dx = end.x - start.x
     const dy = end.y - start.y
     const lengthSquared = dx * dx + dy * dy
-    return this.obstacles.some(obstacle => {
-      const projection = lengthSquared > 0
-        ? ((obstacle.x - start.x) * dx + (obstacle.y - start.y) * dy) / lengthSquared
-        : 0
-      const fraction = Math.max(0, Math.min(1, projection))
-      const x = start.x + dx * fraction - obstacle.x
-      const y = start.y + dy * fraction - obstacle.y
-      return x * x + y * y <= (obstacle.radius + radius) ** 2
+    return this.obstacles.some(({ left, top, right, bottom }) => {
+      // A rectangle expanded by the projectile radius has straight sides and rounded corners.
+      if (this.segmentHitsBox(start.x, start.y, dx, dy, left - radius, top, right + radius, bottom)
+        || this.segmentHitsBox(start.x, start.y, dx, dy, left, top - radius, right, bottom + radius)) {
+        return true
+      }
+
+      return [[left, top], [right, top], [left, bottom], [right, bottom]].some(([x, y]) => {
+        const projection = lengthSquared > 0
+          ? ((x - start.x) * dx + (y - start.y) * dy) / lengthSquared
+          : 0
+        const fraction = Math.max(0, Math.min(1, projection))
+        const distanceX = start.x + dx * fraction - x
+        const distanceY = start.y + dy * fraction - y
+        return distanceX ** 2 + distanceY ** 2 <= radius ** 2
+      })
     })
   }
 
@@ -74,37 +82,53 @@ export class Physics {
     ])
   }
 
-  private contact(box: Rectangle, rotation: number, x: number, y: number, obstacle: Circle): { x: number; y: number } | undefined {
+  private segmentHitsBox(
+    x: number, y: number, dx: number, dy: number,
+    left: number, top: number, right: number, bottom: number,
+  ): boolean {
+    let entry = 0
+    let exit = 1
+    for (const [start, direction, min, max] of [[x, dx, left, right], [y, dy, top, bottom]]) {
+      if (direction === 0) {
+        if (start < min || start > max) return false
+        continue
+      }
+      const first = (min - start) / direction
+      const second = (max - start) / direction
+      entry = Math.max(entry, Math.min(first, second))
+      exit = Math.min(exit, Math.max(first, second))
+      if (entry > exit) return false
+    }
+    return true
+  }
+
+  private contact(box: Rectangle, rotation: number, x: number, y: number, obstacle: Rectangle): { x: number; y: number } | undefined {
     const cosine = Math.cos(rotation)
     const sine = Math.sin(rotation)
-    // Bring the circle into the rectangle's local coordinates.
-    const localX = (obstacle.x - x) * cosine + (obstacle.y - y) * sine
-    const localY = -(obstacle.x - x) * sine + (obstacle.y - y) * cosine
-    const halfWidth = box.width / 2
-    const halfHeight = box.height / 2
-    const closestX = Math.max(-halfWidth, Math.min(halfWidth, localX))
-    const closestY = Math.max(-halfHeight, Math.min(halfHeight, localY))
-    if (!new Circle(localX, localY, obstacle.radius).contains(closestX, closestY)) return
+    const obstacleHalfWidth = obstacle.width / 2
+    const obstacleHalfHeight = obstacle.height / 2
+    const offsetX = x - (obstacle.x + obstacleHalfWidth)
+    const offsetY = y - (obstacle.y + obstacleHalfHeight)
+    let depth = Infinity
+    let normalX = 0
+    let normalY = 0
 
-    let normalX = closestX - localX
-    let normalY = closestY - localY
-    const distance = Math.hypot(normalX, normalY)
-    let depth = obstacle.radius - distance
-    if (distance > 0) {
-      normalX /= distance
-      normalY /= distance
-    } else if (halfWidth - Math.abs(localX) < halfHeight - Math.abs(localY)) {
-      normalX = localX >= 0 ? -1 : 1
-      normalY = 0
-      depth += halfWidth - Math.abs(localX)
-    } else {
-      normalX = 0
-      normalY = localY >= 0 ? -1 : 1
-      depth += halfHeight - Math.abs(localY)
+    // Test both faces of the axis-aligned island and both axes of the rotated ship.
+    for (const [axisX, axisY] of [[1, 0], [0, 1], [cosine, sine], [-sine, cosine]]) {
+      const shipExtent = Math.abs(axisX * cosine + axisY * sine) * box.width / 2
+        + Math.abs(-axisX * sine + axisY * cosine) * box.height / 2
+      const obstacleExtent = Math.abs(axisX) * obstacleHalfWidth + Math.abs(axisY) * obstacleHalfHeight
+      const distance = offsetX * axisX + offsetY * axisY
+      const overlap = shipExtent + obstacleExtent - Math.abs(distance)
+      if (overlap <= 0) return
+      if (overlap < depth) {
+        depth = overlap
+        const direction = distance < 0 ? -1 : 1
+        normalX = axisX * direction
+        normalY = axisY * direction
+      }
     }
-    return {
-      x: (normalX * cosine - normalY * sine) * (depth + 0.000001),
-      y: (normalX * sine + normalY * cosine) * (depth + 0.000001),
-    }
+
+    return { x: normalX * (depth + 0.000001), y: normalY * (depth + 0.000001) }
   }
 }

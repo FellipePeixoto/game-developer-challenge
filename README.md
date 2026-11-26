@@ -82,9 +82,9 @@ The **−** and **+** buttons change each option by one second. **Main Menu** sa
 
 ## Arena collisions and development debugger
 
-The ship's rectangular collider follows its rotation and stays within the arena. On contact, it slides along walls and circular obstacles wherever movement remains possible; a direct approach stops at the blocked surface. Obstacles stay fixed. Turning at contact can shift the ship to keep the rectangle clear; an incompatible rotation is blocked. Resizing the arena returns the ship to the center. Contact resolution lives in `src/arena/Physics.ts`.
+The ship's rectangular collider follows its rotation and stays within the arena. On contact, it slides along walls and the square island wherever movement remains possible; a direct approach stops at the blocked surface. Obstacles stay fixed. Turning at contact can shift the ship to keep the rectangle clear; an incompatible rotation is blocked. Resizing the arena returns the ship to the center. Contact resolution lives in `src/arena/Physics.ts`.
 
-The island is centered at 75% of arena width and 50% of height and has a radius of 48 scaled pixels. Edit `SHIP_COLLIDER_WIDTH_FACTOR` and `SHIP_COLLIDER_HEIGHT_FACTOR` in `PixiArena.ts` to tune the ship rectangle independently. Both start at `0.7`, making each collider dimension 70% of the corresponding scaled texture dimension. A value of `1` uses the full dimension. The development debugger shows the resulting rotated rectangle.
+The island is centered at 75% of arena width and 50% of height and uses a supplied square terrain tile that measures 96 pixels per side at the reference arena size. The tile edges and corners match the obstacle used for ship and projectile collisions. Edit `SHIP_COLLIDER_WIDTH_FACTOR` and `SHIP_COLLIDER_HEIGHT_FACTOR` in `PixiArena.ts` to tune the ship rectangle independently. Both start at `0.7`, making each collider dimension 70% of the corresponding scaled texture dimension. A value of `1` uses the full dimension. The development debugger shows the resulting rotated rectangle.
 
 With `npm run dev`, collider outlines appear automatically: cyan for the ship, magenta for the island and yellow for the arena. They follow movement and resizing. `npm run build` excludes the debugger; `npm run preview` serves the game without outlines.
 

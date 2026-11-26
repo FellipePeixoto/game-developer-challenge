@@ -122,22 +122,32 @@ async function expectRemoval(page: Page, arena: Locator, removalTimesMs: number[
   expect(await projectiles(arena)).toHaveLength(0)
 }
 
-test('removes projectiles on island contact', async ({ page }) => {
+test('removes projectiles that hit the square island corner and leaves shots in open water', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
+  await page.keyboard.down('KeyW')
+  await page.clock.runFor(Math.round(42 / combatScenario.player.movementSpeed * 1000))
+  await page.keyboard.up('KeyW')
   await fire(page, 'KeyE')
+
   const shots = await projectiles(arena)
   expect(shots).toHaveLength(3)
-
   const islandX = Number(await arena.getAttribute('data-island-x'))
   const islandY = Number(await arena.getAttribute('data-island-y'))
   const scale = Number(await arena.getAttribute('data-ship-scale'))
-  const radius = Number(await arena.getAttribute('data-island-radius')) + combatScenario.projectile.radius * scale
-  const speed = combatScenario.projectile.speed * scale
-  const contactTimes = shots.map(({ x, y }) => {
-    const contactX = islandX - Math.sqrt(radius ** 2 - (y - islandY) ** 2)
-    return (contactX - x) / speed * 1000
-  })
-  await expectRemoval(page, arena, contactTimes)
+  const islandHalfSize = 48 * scale
+  const radius = combatScenario.projectile.radius * scale
+  const islandTop = islandY - islandHalfSize
+  const openWater = shots.filter(({ y }) => y + radius < islandTop)
+  const coast = shots.filter(({ y }) => y >= islandTop && y <= islandY)
+  expect(openWater).toHaveLength(1)
+  expect(coast).toHaveLength(2)
+
+  const contactX = islandX - islandHalfSize - radius
+  const contactTime = Math.round((contactX - coast[0].x) / (combatScenario.projectile.speed * scale) * 1000)
+  await page.clock.runFor(contactTime - frameWindowMs)
+  expect(await projectiles(arena)).toHaveLength(3)
+  await page.clock.runFor(frameWindowMs * 2)
+  expect((await projectiles(arena)).map(shot => shot.id)).toEqual(openWater.map(shot => shot.id))
 })
 
 test('removes projectiles when they leave the arena', async ({ page }) => {
