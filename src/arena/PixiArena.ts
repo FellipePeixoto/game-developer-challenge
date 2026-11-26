@@ -97,7 +97,7 @@ export class PixiArena {
     if (import.meta.env.DEV) {
       const { CollisionDebugger } = await import('./CollisionDebugger')
       if (this.destroyed) return
-      // this.debugger = new CollisionDebugger(app.stage, this.element)
+      this.debugger = new CollisionDebugger(app.stage, this.element)
     }
 
     this.resize()
