@@ -20,6 +20,20 @@ interface Projectile {
   y: number
 }
 
+async function hold(page: Page, key: string, milliseconds: number) {
+  await page.keyboard.down(key)
+  await page.clock.runFor(Math.round(milliseconds))
+  await page.keyboard.up(key)
+}
+
+function turn(page: Page, key: 'KeyA' | 'KeyD', radians: number) {
+  return hold(page, key, radians / combatScenario.player.turningSpeed * 1000)
+}
+
+function move(page: Page, distance: number) {
+  return hold(page, 'KeyW', distance / combatScenario.player.movementSpeed * 1000)
+}
+
 async function fire(page: Page, ...commands: FireCommand[]) {
   for (const command of commands) await page.keyboard.press(command)
   await page.clock.runFor(frameWindowMs)
@@ -115,36 +129,25 @@ async function expectRemoval(page: Page, arena: Locator, removalTimesMs: number[
   expect(await projectiles(arena)).toHaveLength(0)
 }
 
-test('removes projectiles that hit the square island corner and leaves shots in open water', async ({ page }) => {
+test('removes a bow shot at the southern shore of the fixed terrain map', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
-  await page.keyboard.down('KeyW')
-  await page.clock.runFor(Math.round(42 / combatScenario.player.movementSpeed * 1000))
-  await page.keyboard.up('KeyW')
-  await fire(page, 'KeyE')
+  await turn(page, 'KeyD', Math.PI)
+  await fire(page, 'Space')
 
   const shots = await projectiles(arena)
-  expect(shots).toHaveLength(3)
-  const islandX = Number(await arena.getAttribute('data-island-x'))
-  const islandY = Number(await arena.getAttribute('data-island-y'))
+  expect(shots).toHaveLength(1)
+  const height = await arena.evaluate(element => element.clientHeight)
   const scale = Number(await arena.getAttribute('data-ship-scale'))
-  const islandHalfSize = 48 * scale
-  const radius = combatScenario.projectile.radius * scale
-  const islandTop = islandY - islandHalfSize
-  const openWater = shots.filter(({ y }) => y + radius < islandTop)
-  const coast = shots.filter(({ y }) => y >= islandTop && y <= islandY)
-  expect(openWater).toHaveLength(1)
-  expect(coast).toHaveLength(2)
-
-  const contactX = islandX - islandHalfSize - radius
-  const contactTime = Math.round((contactX - coast[0].x) / (combatScenario.projectile.speed * scale) * 1000)
-  await page.clock.runFor(contactTime - frameWindowMs)
-  expect(await projectiles(arena)).toHaveLength(3)
-  await page.clock.runFor(frameWindowMs * 2)
-  expect((await projectiles(arena)).map(shot => shot.id)).toEqual(openWater.map(shot => shot.id))
+  const contactY = height * 0.75 - combatScenario.projectile.radius * scale
+  const flightMs = (contactY - shots[0].y) / (combatScenario.projectile.speed * scale) * 1000
+  await expectRemoval(page, arena, [flightMs])
 })
 
 test('removes projectiles when they leave the arena', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
+  await turn(page, 'KeyD', Math.PI / 2)
+  await move(page, 120)
+  await turn(page, 'KeyA', Math.PI / 2)
   await fire(page, 'Space')
   const shots = await projectiles(arena)
   expect(shots).toHaveLength(1)
@@ -155,6 +158,9 @@ test('removes projectiles when they leave the arena', async ({ page }) => {
 
 test('removes projectiles at the lifetime limit in open water', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
+  await turn(page, 'KeyD', Math.PI)
+  await move(page, 40)
+  await turn(page, 'KeyA', Math.PI)
   await fire(page, 'KeyQ')
   const shots = await projectiles(arena)
   expect(shots).toHaveLength(3)

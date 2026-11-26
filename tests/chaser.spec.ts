@@ -35,13 +35,14 @@ test('reproduces the Chaser spawn with the same simulation seed', async ({ page 
     .not.toEqual({ x: first.spawn.x, y: first.spawn.y })
 })
 
-test('spawns the Chaser away from the player and clear of the island and arena edges', async ({ page }) => {
+test('spawns the Chaser away from the player and clear of land and arena edges', async ({ page }) => {
   for (const seed of [0, 42, 73, 4_294_967_295]) {
     const { arena, spawn, width, height } = await openBattle(page, seed)
     const scale = Number(await arena.getAttribute('data-ship-scale'))
-    const islandX = Number(await arena.getAttribute('data-island-x'))
-    const islandY = Number(await arena.getAttribute('data-island-y'))
-    const islandHalfSide = 48 * scale
+    const geometry = await arena.getAttribute('data-debug-colliders')
+    expect(geometry).not.toBeNull()
+    const { obstacles } = JSON.parse(geometry!) as { obstacles: [number, number, number, number][] }
+    expect(obstacles.length).toBeGreaterThan(1)
     const left = spawn.x - spawn.width / 2
     const right = spawn.x + spawn.width / 2
     const top = spawn.y - spawn.height / 2
@@ -53,11 +54,12 @@ test('spawns the Chaser away from the player and clear of the island and arena e
     expect(right).toBeLessThanOrEqual(width)
     expect(top).toBeGreaterThanOrEqual(0)
     expect(bottom).toBeLessThanOrEqual(height)
-    expect(
-      right <= islandX - islandHalfSide || left >= islandX + islandHalfSide
-      || bottom <= islandY - islandHalfSide || top >= islandY + islandHalfSide,
-      `Seed ${seed} must leave the entire hull clear of the island`,
-    ).toBe(true)
+    for (const [landX, landY, landWidth, landHeight] of obstacles) {
+      expect(
+        right <= landX || left >= landX + landWidth || bottom <= landY || top >= landY + landHeight,
+        `Seed ${seed} must leave the entire hull in navigable water`,
+      ).toBe(true)
+    }
     expect(Math.hypot(spawn.x - width / 2, spawn.y - height / 2))
       .toBeGreaterThanOrEqual(160 * scale)
   }

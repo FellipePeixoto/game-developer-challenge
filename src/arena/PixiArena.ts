@@ -1,7 +1,8 @@
-import { Application, Assets, Graphics, Sprite, type Texture } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js'
 import shipUrl from '../../assets/png/retina/ships/ship_1.png'
 import chaserUrl from '../../assets/png/retina/ships/ship_2.png'
-import islandUrl from '../../assets/png/retina/tiles/tile_9.png'
+import terrainUrl from '../../assets/tilesheet/tiles_sheet_retina.png'
+import { arenaMap, isLandTile, mapColumns, mapLeft, mapObstacles, mapRows, oceanTile, submergedTile, tileSize } from './ArenaMap'
 import { ArenaInput } from './ArenaInput'
 import { findChaserSpawn } from './Chaser'
 import { createSimulationRandom, readSimulationSeed } from './SimulationRandom'
@@ -11,8 +12,7 @@ import { PlayerWeapons } from './PlayerWeapons'
 import { gameplayConfig } from './gameplayConfig'
 import type { CollisionDebugger } from './CollisionDebugger'
 
-const WATER_COLOR = '#147089'
-const ISLAND_SIDE = 96
+const WATER_COLOR = '#28a6c4'
 // Fractions of the scaled texture dimensions: decrease for a tighter collider.
 const SHIP_COLLIDER_WIDTH_FACTOR = 0.7
 const SHIP_COLLIDER_HEIGHT_FACTOR = 0.7
@@ -26,9 +26,9 @@ export class PixiArena {
   private lastTime = 0
   private ship?: Sprite
   private chaser?: Sprite
-  private water?: Graphics
+  private terrain?: Container
+  private readonly tileTextures = new Map<number, Texture>()
   private controller?: ShipController
-  private island?: Sprite
   private projectileGraphics?: Graphics
   private readonly physics = new Physics()
   private readonly random = createSimulationRandom(
@@ -43,10 +43,10 @@ export class PixiArena {
   ) {}
 
   async mount(): Promise<void> {
-    const [shipTexture, islandTexture, chaserTexture] = await Promise.all([
+    const [shipTexture, chaserTexture, tiles] = await Promise.all([
       Assets.load<Texture>(shipUrl),
-      Assets.load<Texture>(islandUrl),
       Assets.load<Texture>(chaserUrl),
+      Assets.load<Texture>(terrainUrl),
     ])
     if (this.destroyed) return
 
@@ -65,10 +65,8 @@ export class PixiArena {
       return
     }
 
-    this.water = new Graphics()
-    app.stage.addChild(this.water)
-    this.island = new Sprite(islandTexture)
-    app.stage.addChild(this.island)
+    this.terrain = this.createTerrain(tiles)
+    app.stage.addChild(this.terrain)
     this.ship = new Sprite(shipTexture)
     this.ship.anchor.set(0.5)
     app.stage.addChild(this.ship)
@@ -108,11 +106,12 @@ export class PixiArena {
     this.debugger?.destroy()
     this.debugger = undefined
     if (this.app?.renderer) this.app.destroy(true, { children: true })
+    for (const texture of this.tileTextures.values()) texture.destroy()
+    this.tileTextures.clear()
     this.app = undefined
     this.ship = undefined
     this.chaser = undefined
-    this.water = undefined
-    this.island = undefined
+    this.terrain = undefined
     this.controller = undefined
     this.projectileGraphics = undefined
     delete this.element.dataset.projectiles
@@ -141,9 +140,45 @@ export class PixiArena {
     this.animationFrame = requestAnimationFrame(this.tick)
   }
 
+  private createTerrain(sheet: Texture): Container {
+    const terrain = new Container()
+    const water = new Container()
+    const land = new Container()
+    const atlasTileSize = sheet.width / 16
+    const place = (layer: Container, id: number, x: number, y: number) => {
+      let texture = this.tileTextures.get(id)
+      if (!texture) {
+        const column = (id - 1) % 16
+        const row = Math.floor((id - 1) / 16)
+        const frame = new Rectangle(column * atlasTileSize, row * atlasTileSize, atlasTileSize, atlasTileSize)
+        texture = new Texture({ source: sheet.source, frame })
+        this.tileTextures.set(id, texture)
+      }
+      const sprite = new Sprite(texture)
+      sprite.position.set(x, y)
+      sprite.setSize(tileSize, tileSize)
+      layer.addChild(sprite)
+    }
+    for (const [row, cells] of arenaMap.entries()) {
+      for (const [column, tile] of cells.entries()) {
+        const x = mapLeft + column * tileSize
+        const y = row * tileSize
+        place(water, oceanTile, x, y)
+        if (!tile) continue
+        const isLand = isLandTile(tile)
+        place(water, isLand ? submergedTile : tile, x, y)
+        if (isLand) place(land, tile, x, y)
+      }
+    }
+    terrain.addChild(water, land)
+    terrain.tint = 0xe4e4e4
+    terrain.cacheAsTexture({ resolution: 100 })
+    return terrain
+  }
+
   private resize(): void {
-    const { app, ship, water, island, chaser } = this
-    if (!app || !ship || !water || !island || !chaser) return
+    const { app, ship, terrain, chaser } = this
+    if (!app || !ship || !terrain || !chaser) return
 
     const width = this.width
     const height = this.height
@@ -155,7 +190,7 @@ export class PixiArena {
       }
     }
     app.renderer.resize(width, height, window.devicePixelRatio)
-    water.clear().rect(0, 0, width, height).fill(WATER_COLOR)
+    terrain.scale.set(width / mapColumns, height / mapRows)
     ship.position.set(width / 2, height / 2)
     ship.scale.set(Math.min(width / 960, height / 540))
     this.physics.bounds.width = width
@@ -164,20 +199,8 @@ export class PixiArena {
     this.physics.ship.height = ship.height * SHIP_COLLIDER_HEIGHT_FACTOR
     this.physics.ship.x = ship.x - this.physics.ship.width / 2
     this.physics.ship.y = ship.y - this.physics.ship.height / 2
-    const obstacle = this.physics.island
-    const side = ISLAND_SIDE * ship.scale.x
-    const centerX = width * 0.75
-    const centerY = height / 2
-    obstacle.x = centerX - side / 2
-    obstacle.y = centerY - side / 2
-    obstacle.width = side
-    obstacle.height = side
-    water.rect(obstacle.x, obstacle.y, obstacle.width, obstacle.height).fill('#dfc481')
-    island.position.set(obstacle.x, obstacle.y)
-    island.width = obstacle.width
-    island.height = obstacle.height
-    this.element.dataset.islandX = String(centerX)
-    this.element.dataset.islandY = String(centerY)
+    const { obstacles } = this.physics
+    obstacles.splice(0, obstacles.length, ...mapObstacles(width, height))
     chaser.scale.set(ship.scale.x)
     if (!chaser.visible) this.spawnChaser(chaser, ship)
     this.drawProjectiles()

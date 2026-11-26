@@ -2,10 +2,9 @@ import { Rectangle } from 'pixi.js'
 
 export class Physics {
   readonly bounds = new Rectangle()
-  readonly island = new Rectangle()
   readonly ship = new Rectangle()
   shipRotation = 0
-  readonly obstacles: Rectangle[] = [this.island]
+  readonly obstacles: Rectangle[] = []
 
   move(collider: Rectangle, deltaX: number, deltaY: number, rotation = this.shipRotation): boolean {
     const { bounds } = this
@@ -113,7 +112,7 @@ export class Physics {
     let normalX = 0
     let normalY = 0
 
-    // Test both faces of the axis-aligned island and both axes of the rotated ship.
+    // Test both axes of the axis-aligned obstacle and both axes of the rotated ship.
     for (const [axisX, axisY] of [[1, 0], [0, 1], [cosine, sine], [-sine, cosine]]) {
       const shipExtent = Math.abs(axisX * cosine + axisY * sine) * box.width / 2
         + Math.abs(-axisX * sine + axisY * cosine) * box.height / 2

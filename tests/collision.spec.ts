@@ -38,12 +38,21 @@ test.beforeEach(async ({ page }) => {
   await page.clock.pauseAt(startTime.getTime() + 60_000)
 })
 
-for (const [edge, heading] of [['top', 0], ['right', Math.PI / 2], ['bottom', Math.PI], ['left', 3 * Math.PI / 2]] as const) {
+const quarterTurn = Math.PI / 2
+const routesToEdge = {
+  top: [[quarterTurn, 200], [-quarterTurn, 320]],
+  right: [[quarterTurn, 520]],
+  bottom: [[Math.PI, 40], [quarterTurn, 240], [-quarterTurn, 280]],
+  left: [[Math.PI, 40], [quarterTurn, 520]],
+} as const
+
+for (const edge of ['top', 'right', 'bottom', 'left'] as const) {
   test(`keeps the rotated ship collider inside the ${edge} edge`, async ({ page }) => {
     const arena = page.getByRole('img', { name: 'Battle arena' })
-    await move(page, 126)
-    await turn(page, 'KeyD', heading)
-    await move(page, 720)
+    for (const [rotation, distance] of routesToEdge[edge]) {
+      await turn(page, rotation < 0 ? 'KeyA' : 'KeyD', Math.abs(rotation))
+      await move(page, distance)
+    }
     const x = await value(arena, 'ship-x')
     const y = await value(arena, 'ship-y')
     const { width, height } = await arena.evaluate(element => ({
@@ -63,53 +72,33 @@ for (const [edge, heading] of [['top', 0], ['right', Math.PI / 2], ['bottom', Ma
     expect(Math.max(...ys)).toBeLessThanOrEqual(height + 0.01)
     const clearance = { top: Math.min(...ys), right: width - Math.max(...xs), bottom: height - Math.max(...ys), left: Math.min(...xs) }
     expect(clearance[edge]).toBeLessThan(4)
-    await move(page, 180)
-    expect(Math.abs(await value(arena, 'ship-x') - x)).toBeLessThan(4)
-    expect(Math.abs(await value(arena, 'ship-y') - y)).toBeLessThan(4)
+    const horizontalTravel = edge === 'left' || edge === 'right'
+    const axis = horizontalTravel ? 'ship-x' : 'ship-y'
+    const positionAtContact = horizontalTravel ? x : y
+    await move(page, 60)
+    expect(Math.abs(await value(arena, axis) - positionAtContact)).toBeLessThan(4)
   })
 }
 
-test('stops the ship at the square island corner and lets it sail around', async ({ page }) => {
+test('crosses the channel and stops at the southern shore of the fixed terrain map', async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
-  const scale = await value(arena, 'ship-scale')
-  const islandHalfSize = 48 * scale
-  const islandLeft = await value(arena, 'island-x') - islandHalfSize
-  const islandTop = await value(arena, 'island-y') - islandHalfSize
+  const { width, height } = await arena.evaluate(element => ({
+    width: element.clientWidth,
+    height: element.clientHeight,
+  }))
 
-  await move(page, 46)
   await turn(page, 'KeyD', Math.PI / 2)
-  await move(page, 265)
+  await move(page, 330)
+  expect(await value(arena, 'ship-x')).toBeGreaterThan(width * 0.8)
+  expect(Math.abs(await value(arena, 'ship-y') - height / 2)).toBeLessThan(8)
 
-  const points = await corners(arena)
-  const bottom = Math.max(...points.filter((_, index) => index % 2 === 1))
-  expect(bottom).toBeGreaterThan(islandTop)
-  expect(bottom).toBeLessThan(islandTop + 2 * islandHalfSize)
-
-  // A rotated bow may extend past the left edge while it is above the island.
-  const hullAtIsland = []
-  for (let index = 0; index < points.length; index += 2) {
-    const next = (index + 2) % points.length
-    const x = points[index]
-    const y = points[index + 1]
-    const nextY = points[next + 1]
-    if (y >= islandTop) hullAtIsland.push(x)
-    if ((y < islandTop) === (nextY < islandTop)) continue
-
-    const fraction = (islandTop - y) / (nextY - y)
-    hullAtIsland.push(x + fraction * (points[next] - x))
-  }
-  const right = Math.max(...hullAtIsland)
-  expect(right).toBeLessThanOrEqual(islandLeft + 0.01)
-  expect(right).toBeGreaterThan(islandLeft - 4)
-
-  await turn(page, 'KeyA', Math.PI / 2)
-  await move(page, 90)
   await turn(page, 'KeyD', Math.PI / 2)
   await move(page, 160)
-
-  const pastCorner = await corners(arena)
-  expect(Math.min(...pastCorner.filter((_, index) => index % 2 === 0))).toBeGreaterThan(islandLeft)
-  expect(Math.max(...pastCorner.filter((_, index) => index % 2 === 1))).toBeLessThan(islandTop)
+  const points = await corners(arena)
+  const south = Math.max(...points.filter((_, index) => index % 2 === 1))
+  const shore = height * 0.625
+  expect(south).toBeLessThanOrEqual(shore + 0.01)
+  expect(south).toBeGreaterThan(shore - 4)
 })
 
 test('shows collider outlines only in development and updates them with movement and resize', async ({ page }) => {
