@@ -93,14 +93,16 @@ export function CaptainLog({ initialTab, onClose }: CaptainLogProps) {
           </div>
         ))}
       </div>
-      <nav className="log-pagination" aria-label={isRanking ? 'Ranking pages' : 'Match history pages'}>
-        <button className="round-button" type="button" data-icon="KeyA" aria-label="Previous page"
-          disabled={page === 0} onClick={() => setPage(page - 1)} />
-        <output aria-label="Current page">Page {page + 1} of {pageCount}</output>
-        <button className="round-button" type="button" data-icon="KeyD" aria-label="Next page"
-          disabled={page === pageCount - 1} onClick={() => setPage(page + 1)} />
-      </nav>
-      <button className="art-button" type="button" onClick={onClose}>Main Menu</button>
+      <div className="log-footer">
+        <nav className="log-pagination" aria-label={isRanking ? 'Ranking pages' : 'Match history pages'}>
+          <button className="round-button" type="button" data-icon="KeyA" aria-label="Previous page"
+            disabled={page === 0} onClick={() => setPage(page - 1)} />
+          <output aria-label="Current page">Page {page + 1} of {pageCount}</output>
+          <button className="round-button" type="button" data-icon="KeyD" aria-label="Next page"
+            disabled={page === pageCount - 1} onClick={() => setPage(page + 1)} />
+        </nav>
+        <button className="art-button" type="button" onClick={onClose}>Main Menu</button>
+      </div>
     </section>
   )
 }

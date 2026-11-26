@@ -201,3 +201,46 @@ button:disabled { cursor: default; opacity: .55; }
   }
 }
 
+@media (pointer: coarse) {
+  .game-shell { --touch-target-size: 48px; }
+  .session-hud { --button-size: max(6cqh, var(--touch-target-size)); }
+  .touch-controls { --button-size: max(7cqh, var(--touch-target-size)); }
+
+  .overlay-panel {
+    width: 84cqw;
+    gap: 2cqh;
+    padding: 4cqh 5cqw;
+    font-size: max(14px, 1rem);
+  }
+
+  .overlay-panel:is(.main-menu, .captain-log) {
+    padding-block: 4cqh;
+  }
+
+  .game-shell .overlay-panel .art-button {
+    --art-button-height: max(8cqh, var(--touch-target-size));
+    min-width: var(--touch-target-size);
+    padding-inline: calc(var(--art-button-height) * 80 / 176);
+    font-size: max(14px, 1.55cqw);
+    white-space: nowrap;
+  }
+
+  .overlay-panel .round-button {
+    width: max(var(--button-size, 2rem), var(--touch-target-size));
+  }
+
+  .overlay-panel .menu-actions {
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    width: min(100%, 74cqw);
+  }
+
+  .game-shell .overlay-panel .menu-links { width: 100%; }
+  .menu-ship { height: 6cqh; }
+  .tagline { font-size: max(11px, 1.5cqh); }
+  .menu-controls h2 { margin: 0; font-size: max(14px, .95rem); }
+  .menu-controls ul { font-size: max(13px, .9rem); }
+  .inner-screen h1 { font-size: max(20px, 3cqw); }
+  .options-form { width: min(100%, 36cqw); }
+  .option-field output { font-size: max(20px, 1.55rem); }
+}

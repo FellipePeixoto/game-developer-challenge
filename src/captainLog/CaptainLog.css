@@ -7,7 +7,8 @@
 
 .captain-log .menu-links { width: min(100%, 31rem); gap: 1.6cqw; }
 .captain-log .art-button-small { font-size: 1.1cqw; }
-.captain-log > .art-button {
+.log-footer { display: contents; }
+.log-footer > .art-button {
   --art-button-height: 6.8cqh;
   width: min(100%, 17.5rem);
   margin-top: 1.1cqh;
@@ -89,4 +90,42 @@
   font-weight: 700;
   text-transform: uppercase;
   --button-size: 1.9rem;
+}
+
+@media (pointer: coarse) {
+  .overlay-panel.captain-log {
+    width: 88cqw;
+    min-height: 0;
+    gap: 1cqh;
+    --screen-margin: 1.5cqh;
+    padding-block: 4.5cqh;
+  }
+
+  .log-caption, .log-pagination { font-size: max(12px, 1cqw); line-height: 1.2; }
+
+  .captain-log table {
+    margin-top: 3px;
+    border-spacing: 0 2px;
+    line-height: 1.15;
+  }
+
+  .captain-log th, .captain-log td { padding-block: 2px; }
+  .captain-log th, .log-meta, .log-time-up, .log-defeated { font-size: max(11px, .8cqw); }
+  .captain-log :where(td) { height: max(20px, 2.35rem); font-size: max(12px, 1cqw); }
+  .log-badge { font-size: max(10px, .52rem); }
+
+  .log-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2cqw;
+    width: 100%;
+  }
+
+  .captain-log .log-footer > .art-button {
+    flex-shrink: 0;
+    width: max-content;
+    min-width: 144px;
+    margin-top: 0;
+  }
 }

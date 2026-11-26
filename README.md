@@ -55,7 +55,7 @@ The game frame stays centered at a 16:9 aspect ratio and scales to fit the brows
 
 On touch devices in portrait, the entire game frame rotates 90° to use the long side of the viewport as its width. In landscape, the game frame follows the viewport orientation.
 
-Menus, text, and controls scale with the 16:9 frame. In Captain's Log, Ranking and Match History show up to five records per page, with previous and next buttons to browse records.
+The desktop interface scales with the 16:9 frame. On touch devices, menus use wider panels and larger text. Menu and arena buttons have touch targets of at least 48 × 48 CSS pixels. Ranking and Match History each show up to five records per page, with previous and next buttons to browse the full lists.
 
 ## Controls
 
