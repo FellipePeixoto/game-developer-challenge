@@ -30,8 +30,7 @@ test('shows the keyboard controls in the main menu', async ({ page }) => {
   }
 })
 
-test('keeps mobile controls readable and paginated tables fully visible', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'Requires a touch device')
+test('keeps mobile controls readable and paginated tables fully visible', { tag: '@touch' }, async ({ page }) => {
 
   async function expectMenuButtonsToFit(name: string) {
     const panel = page.getByRole('region', { name, exact: true })

@@ -1,27 +1,23 @@
 import { expect, test, type Page } from '@playwright/test'
 import { gameplayConfig } from '../src/arena/gameplayConfig'
+import { freezeGameClock, openClockedArena } from './clocked-arena'
 
-const startTime = new Date('2026-01-01T00:00:00Z')
+test.use({ deviceScaleFactor: 1 })
 
 async function openBattle(page: Page, scenario?: string) {
-  await page.clock.install({ time: startTime })
-  await page.setViewportSize({ width: 960, height: 540 })
+  await freezeGameClock(page)
   await page.addInitScript(() => {
     localStorage.setItem('pirate-battle:session-options', JSON.stringify({
       durationSeconds: 60,
       spawnIntervalSeconds: 2,
     }))
   })
-  await page.goto(`/?seed=1487${scenario ? `&enemy=${scenario}` : ''}`)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
-  const arena = page.locator('.battle-arena')
-  await expect(arena.locator('canvas')).toHaveCount(1)
-  await page.clock.pauseAt(startTime.getTime() + 60_000)
-  return arena
+  return openClockedArena(page, `/?seed=1487${scenario ? `&enemy=${scenario}` : ''}`)
 }
 
 test('time expires only during active play and restart clears the match', async ({ page }) => {
   test.setTimeout(120_000)
+  await page.setViewportSize({ width: 480, height: 270 })
   const quietConfig = {
     ...gameplayConfig,
     player: { ...gameplayConfig.player, maxHealth: 100 },
@@ -38,7 +34,7 @@ test('time expires only during active play and restart clears the match', async 
   expect(JSON.parse(await arena.getAttribute('data-enemies') ?? '[]')).toHaveLength(1)
   await page.getByRole('button', { name: 'Pause' }).click()
   const pausedTime = Number(await arena.getAttribute('data-remaining-seconds'))
-  await page.clock.runFor(10_000)
+  await page.clock.runFor(2_100)
   expect(Number(await arena.getAttribute('data-remaining-seconds'))).toBe(pausedTime)
   await page.getByRole('button', { name: 'Resume' }).click()
 
@@ -62,6 +58,7 @@ test('time expires only during active play and restart clears the match', async 
 })
 
 test('player death ends the match and ignores held controls', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 540 })
   const fragileConfig = {
     ...gameplayConfig,
     player: { ...gameplayConfig.player, maxHealth: 1 },

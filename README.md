@@ -4,7 +4,17 @@ A 2D top-down naval shooter built with React, TypeScript and PixiJS. Navigate be
 
 ## Status
 
-The main menu opens the arena, Options, or the selected tab in Captain's Log. The arena supports pausing, keyboard and touch movement, arena bounds, and island collisions. Captain's Log displays sample ranking and match history records with five entries per page. Switching tabs returns to the first page.
+The playable match includes player combat, two enemy types, scoring, manual pause, match end, restart, and a semantic HUD. Captain's Log displays sample ranking and match history records; it is not connected to an API.
+
+| Area | Implemented | Remaining scope |
+| --- | --- | --- |
+| Gameplay, rules, collisions, and enemy behavior | Arena and island collisions; keyboard and touch movement; front and side weapons; Chaser and Shooter behavior; timed spawning, damage, scoring, match end, and restart. | No planned gameplay rule remains in the completed stages. |
+| PixiJS, architecture, and resource lifecycle | PixiJS arena with separate simulation, input, collision, enemy, and weapon modules; asset loading and teardown. | Final architecture and resource lifecycle review. |
+| Interface, feedback, responsiveness, and accessibility | Menu, persistent options, manual pause, touch buttons, player and enemy health indicators, semantic HUD, and a layout that adapts to viewport orientation. | Automatic pause, combat effects and sound, ship deterioration, complete mobile review, and accessibility pass. |
+| TanStack Query, Axios, and ranking and history consistency | Captain's Log has sample ranking and history tables with pagination. | HTTP integration, remote state, match registration, cache consistency, and recovery of pending records. |
+| MSW and failure scenarios | None. | API mocks, reproducible network scenarios, scenario selection and reset, and failure recovery. |
+| Playwright tests | E2E coverage for implemented menu, options, arena, combat, enemy, match-end, and HUD behavior. | Remaining scenarios, visual regression baselines, and final desktop and mobile coverage. |
+| Performance and documentation | Setup, controls, configuration, and implemented behavior are documented here; architecture decisions are in [ARCHITECTURE.md](ARCHITECTURE.md). | Performance profiling, final documentation and test reports, and public deployment. |
 
 ## Development estimates
 
@@ -18,15 +28,12 @@ The main menu opens the arena, Options, or the selected tab in Captain's Log. Th
 | Interface and menus | React |
 | Language | TypeScript (strict mode) |
 | Game rendering | PixiJS |
-| Remote state (ranking and history) | TanStack Query |
-| HTTP client | Axios |
-| API mocking | MSW |
-| E2E and visual regression | Playwright |
+| E2E tests | Playwright |
 | Build tool | Vite |
 
 ## Setup
 
-The project supports Node.js versions from 22.13.0 through 26.13.1, inclusive. Run `node --version` to check the active version. No environment variables are required at this stage.
+The project supports Node.js versions from 22.13.0 through 26.13.1, inclusive. Run `node --version` to check the active version. No environment variables are required.
 
 ```sh
 npm ci
@@ -123,10 +130,6 @@ try {
 ```
 
 The production flag makes Playwright start Vite preview and check that the debugger is absent. Omit `--project=desktop-chromium` to include the mobile profile.
-
-## Not documented yet
-
-These sections will be added in the delivery that introduces them: further gameplay configuration, network scenario selection and reset, steps to reproduce network failures, and deployment URL.
 
 ## More
 

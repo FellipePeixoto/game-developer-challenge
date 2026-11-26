@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { gameplayConfig, type FireCommand } from '../src/arena/gameplayConfig'
+import { freezeGameClock, openClockedArena } from './clocked-arena'
 
 // This scenario gives all three projectile removal conditions room to occur.
 const combatScenario = {
@@ -53,13 +54,9 @@ test.beforeEach(async ({ page }) => {
     })
     scenarioLoaded = true
   })
-  const startTime = new Date('2026-01-01T00:00:00Z')
-  await page.clock.install({ time: startTime })
-  await page.goto('/?seed=42')
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
-  await expect(page.getByRole('img', { name: 'Battle arena' }).locator('canvas')).toHaveCount(1)
+  await freezeGameClock(page)
+  await openClockedArena(page, '/?seed=42')
   expect(scenarioLoaded, 'Combat scenarios require the Vite development server').toBe(true)
-  await page.clock.pauseAt(startTime.getTime() + 60_000)
 })
 
 test('fires one shot from the bow while moving', async ({ page }) => {
@@ -171,8 +168,7 @@ test('removes projectiles at the lifetime limit in open water', async ({ page })
   await expectRemoval(page, arena, shots.map(() => lifetimeSeconds * 1000))
 })
 
-test('fires a broadside while holding the touch movement control', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'Touch controls are available on touch devices')
+test('fires a broadside while holding the touch movement control', { tag: '@touch' }, async ({ page }) => {
   const arena = page.getByRole('img', { name: 'Battle arena' })
   const forward = page.getByRole('button', { name: 'Forward', exact: true })
   const fire = page.getByRole('button', { name: 'Fire left', exact: true })

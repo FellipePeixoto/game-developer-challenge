@@ -1,6 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-
-const startTime = new Date('2026-01-01T00:00:00Z')
+import { freezeGameClock, openClockedArena } from './clocked-arena'
 
 interface Spawn {
   x: number
@@ -25,10 +24,7 @@ async function chaserState(arena: Locator): Promise<ChaserState> {
 }
 
 async function openBattle(page: Page, seed: number) {
-  await page.goto(`/?enemy=chaser&seed=${seed}`)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
-  const arena = page.getByRole('img', { name: 'Battle arena' })
-  await expect(arena).toHaveAttribute('data-chaser-spawn', /\S+/)
+  const arena = await openClockedArena(page, `/?enemy=chaser&seed=${seed}`)
   const spawn = JSON.parse((await arena.getAttribute('data-chaser-spawn'))!) as Spawn
   const { width, height } = await arena.evaluate(element => ({
     width: element.clientWidth,
@@ -39,12 +35,11 @@ async function openBattle(page: Page, seed: number) {
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 })
-  await page.clock.install({ time: startTime })
+  await freezeGameClock(page)
 })
 
 test('turns toward the moving player, deals one damage on impact and explodes without scoring', async ({ page }) => {
   const { arena } = await openBattle(page, 1487)
-  await page.clock.pauseAt(startTime.getTime() + 60_000)
   const initial = await chaserState(arena)
   expect(initial.phase).toBe('pursuing')
 
@@ -78,7 +73,6 @@ test('turns toward the moving player, deals one damage on impact and explodes wi
 
 test('stops at the island while pursuing the player', async ({ page }) => {
   const { arena, spawn } = await openBattle(page, 7)
-  await page.clock.pauseAt(startTime.getTime() + 60_000)
   const initial = await chaserState(arena)
 
   await page.clock.runFor(2500)

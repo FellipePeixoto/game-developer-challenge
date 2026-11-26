@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { gameplayConfig } from '../src/arena/gameplayConfig'
+import { freezeGameClock, openClockedArena } from './clocked-arena'
 
-const startTime = new Date('2026-01-01T00:00:00Z')
+test.use({ deviceScaleFactor: 1 })
 
 async function openBattle(page: Page, enemy?: 'chaser' | 'shooter') {
-  await page.clock.install({ time: startTime })
+  await freezeGameClock(page)
   await page.setViewportSize({ width: 960, height: 540 })
   await page.addInitScript(() => {
     localStorage.setItem('pirate-battle:session-options', JSON.stringify({
@@ -12,11 +13,7 @@ async function openBattle(page: Page, enemy?: 'chaser' | 'shooter') {
       spawnIntervalSeconds: 8,
     }))
   })
-  await page.goto(`/?seed=1487${enemy ? `&enemy=${enemy}` : ''}`)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
-  const arena = page.locator('.battle-arena')
-  await expect(arena.locator('canvas')).toHaveCount(1)
-  await page.clock.pauseAt(startTime.getTime() + 60_000)
+  const arena = await openClockedArena(page, `/?seed=1487${enemy ? `&enemy=${enemy}` : ''}`)
   return { arena, hud: page.getByRole('region', { name: 'Match status' }) }
 }
 
@@ -43,7 +40,7 @@ test('shows semantic match values and suspends the displayed clock on pause', as
   await page.getByRole('button', { name: 'Pause' }).click()
   await expect(hud).toContainText('Paused')
   const pausedText = await hud.textContent()
-  await page.clock.runFor(10_000)
+  await page.clock.runFor(2_100)
   expect(await hud.textContent()).toBe(pausedText)
   await page.getByRole('button', { name: 'Resume' }).click()
   await expect(hud).toContainText('Playing')
