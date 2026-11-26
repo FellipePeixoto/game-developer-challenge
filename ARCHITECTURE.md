@@ -41,3 +41,9 @@ The debugger is dynamically imported and instantiated only inside `import.meta.e
 `ArenaInput.ts` tracks held commands and captures fire taps that finish between animation frames. `PlayerWeapons.ts` uses simulation time for the three independent cooldowns and owns projectile positions, direction, and lifetime. `gameplayConfig.ts` defines the combat parameters in seconds and at the reference arena size. The bow fires along the ship heading. Each broadside fires along the corresponding perpendicular direction from three points spaced along the hull.
 
 `Physics.ts` checks each projectile's movement segment against the island rectangle expanded by the projectile radius, including rounded corner contacts. A projectile is removed on obstacle contact, when its center leaves the arena, or when its lifetime expires. `PixiArena.ts` advances weapons inside the active simulation step and draws the remaining projectiles. On resize, their positions scale with the arena. Pause suspends their movement and cooldowns and clears held and pending input.
+
+## Simulation seed and Chaser spawn
+
+Each arena instance owns an independent 32-bit pseudorandom sequence. `SimulationRandom.ts` initializes the sequence from browser-generated entropy or, in development, from the `seed` URL parameter. The sequence starts fresh with each new arena.
+
+`Chaser.ts` samples positions within the arena and checks the entire starting ship rectangle against the island and arena bounds. It also enforces the configured minimum center-to-center distance from the player. If random sampling finds no safe position, it checks the four outermost valid centers. `PixiArena.ts` loads and positions the enemy sprite and scales its position when the arena resizes.

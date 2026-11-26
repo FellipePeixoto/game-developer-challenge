@@ -71,6 +71,8 @@ The default reload time is 0.35 seconds for the bow and 0.6 seconds for each sid
 
 Movement and collision tests calculate control durations from the configured ship speeds. The combat tests use the Vite development server and load a fixed combat configuration so that island contact, arena exit, and expiry can each be tested with real controls.
 
+The Chaser starts at least 160 reference pixels from the player, measured center to center. Adjust the minimum in `gameplayConfig.ts`. To reproduce a spawn in development, open `/?seed=42` and select **Play**. The same seed and arena dimensions reproduce the same initial position. Supported seeds are integers from 0 to 4294967295.
+
 ## Options
 
 The **−** and **+** buttons change each option by one second. **Main Menu** saves both values to the browser's local storage. From the pause screen, **Back to Pause** saves the values and returns to the paused session. The values are captured when **Play** is selected, so later changes apply to new matches only. Invalid saved data or unavailable storage falls back to the defaults.

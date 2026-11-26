@@ -5,6 +5,9 @@ export const gameplayConfig = {
     // radianos/sec
     turningSpeed: 0.75,
   },
+  chaser: {
+    minimumSpawnDistance: 160,
+  },
   weapons: {
     Space: { cooldownSeconds: 0.35 },
     KeyQ: { cooldownSeconds: 0.6 },

@@ -3,7 +3,7 @@ import { gameplayConfig, type FireCommand } from '../src/arena/gameplayConfig'
 
 // This scenario gives all three projectile removal conditions room to occur.
 const combatScenario = {
-  player: gameplayConfig.player,
+  ...gameplayConfig,
   weapons: {
     Space: { cooldownSeconds: 0.35 },
     KeyQ: { cooldownSeconds: 0.6 },
@@ -39,16 +39,9 @@ test.beforeEach(async ({ page }) => {
     })
     scenarioLoaded = true
   })
-  await page.addInitScript(seed => {
-    let state = seed
-    Math.random = () => {
-      state = state * 16807 % 2147483647
-      return (state - 1) / 2147483646
-    }
-  }, 42)
   const startTime = new Date('2026-01-01T00:00:00Z')
   await page.clock.install({ time: startTime })
-  await page.goto('/')
+  await page.goto('/?seed=42')
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect(page.getByRole('img', { name: 'Battle arena' }).locator('canvas')).toHaveCount(1)
   expect(scenarioLoaded, 'Combat scenarios require the Vite development server').toBe(true)
