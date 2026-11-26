@@ -11,6 +11,25 @@ test('opens Pirate Battle', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(0)
 })
 
+test('shows the keyboard controls in the main menu', async ({ page }) => {
+  await page.goto('/')
+
+  const controls = page.getByRole('region', { name: 'Controls', exact: true })
+  const commands = [
+    ['Forward', 'W'],
+    ['Turn left', 'A'],
+    ['Turn right', 'D'],
+    ['Fire left', 'Q'],
+    ['Fire front', 'Space'],
+    ['Fire right', 'E'],
+  ]
+
+  for (const [action, key] of commands) {
+    const command = controls.getByRole('listitem').filter({ hasText: action })
+    await expect(command.getByText(key, { exact: true })).toBeVisible()
+  }
+})
+
 test('uses square corners on the menu and options controls', async ({ page }) => {
   await page.goto('/')
   const options = page.getByRole('button', { name: 'Options' })

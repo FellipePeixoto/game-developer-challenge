@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import title from '../assets/png/retina/ui/menu/title_pirate_battle.png'
 import ship from '../assets/png/retina/ships/ship_1.png'
+import { ArenaInput } from './arena/ArenaInput'
 import type { LogTab } from './captainLog/CaptainLog'
 
 export type MenuAction = 'play' | 'options' | LogTab
@@ -28,7 +29,14 @@ export function MainMenu({ onSelect, restoreFocus }: MainMenuProps) {
         <button className="art-button" type="button" data-action="options" onClick={() => onSelect('options')}>Options</button>
       </div>
       <img className="menu-ship" src={ship} alt="" />
-      <p className="menu-hint">Navigate the islands. Survive the battle.</p>
+      <section className="menu-controls" aria-labelledby="menu-controls-title">
+        <h2 id="menu-controls-title">Controls</h2>
+        <ul role="list">
+          {[...ArenaInput.movementCommands, ...ArenaInput.fireCommands].map(({ code, label, key }) => (
+            <li key={code}><kbd>{key}</kbd> {label}</li>
+          ))}
+        </ul>
+      </section>
       <div className="menu-links">
         <button className="art-button art-button-small" type="button" data-action="ranking" onClick={() => onSelect('ranking')}>Ranking</button>
         <button className="art-button art-button-small" type="button" data-action="history" onClick={() => onSelect('history')}>Match History</button>

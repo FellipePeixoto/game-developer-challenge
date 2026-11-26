@@ -59,7 +59,7 @@ Menus, text, and controls scale with the 16:9 frame. In Captain's Log, Ranking a
 
 ## Controls
 
-Press **W** to move forward, **A** to turn left, and **D** to turn right. Press **Space** to fire one shot from the bow, **Q** to fire three shots to port, or **E** to fire three shots to starboard. Hold a fire control to repeat as the weapon reloads. Movement and fire controls can be used together on the keyboard or on screen.
+The main menu lists the keyboard controls. Press **W** to move forward, **A** to turn left, and **D** to turn right. Press **Space** to fire one shot from the bow, **Q** to fire three shots to port, or **E** to fire three shots to starboard. Hold a fire control to repeat as the weapon reloads. Movement and fire controls can be used together on the keyboard or on screen.
 
 Select **Pause** to suspend movement, projectiles, and reload timers. Select **Resume** to continue the current session or **Main Menu** to end it.
 
