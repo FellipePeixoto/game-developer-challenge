@@ -6,6 +6,11 @@ A 2D top-down naval shooter built with React, TypeScript and PixiJS. Navigate be
 
 The main menu opens the arena, Options, or the selected tab in Captain's Log. The arena supports pausing, keyboard and touch movement, arena bounds, and island collisions. Captain's Log displays sample ranking and match history records with five entries per page. Switching tabs returns to the first page.
 
+## Development estimates
+
+- AI-assisted development: 9 hours.
+- Development without AI assistance: 6 days.
+
 ## Stack
 
 | Responsibility | Technology |
